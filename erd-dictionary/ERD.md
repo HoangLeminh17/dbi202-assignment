@@ -4,11 +4,11 @@ Phụ trách: Hoàng (AI)
 
 Sơ đồ dưới đây mô tả mô hình ER tương ứng với schema đã cài đặt trong [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql), vẽ theo **ký hiệu Chen** (entity = hình chữ nhật, relationship = hình thoi, attribute = hình oval, khoá chính gạch chân) - đúng chuẩn được yêu cầu trong đề bài, thay vì ký hiệu crow's foot của Mermaid.
 
-File nguồn (vector, chỉnh sửa được): [`docs/ERD.svg`](ERD.svg) - mở trực tiếp bằng trình duyệt để xem/phóng to, hoặc bằng Inkscape/Illustrator nếu cần sửa. File ảnh xuất sẵn để chèn vào báo cáo: [`docs/ERD.jpg`](ERD.jpg).
+File nguồn (vector, chỉnh sửa được): [`erd-dictionary/ERD.svg`](ERD.svg) - mở trực tiếp bằng trình duyệt để xem/phóng to, hoặc bằng Inkscape/Illustrator nếu cần sửa. File ảnh xuất sẵn để chèn vào báo cáo: [`erd-dictionary/ERD.jpg`](ERD.jpg).
 
 ![ERD Group7 Video Game Sales](ERD.jpg)
 
-Khi đưa vào `material/Report.docx`: chèn trực tiếp file `docs/ERD.jpg` vào Word (Insert → Pictures). Nếu cần sửa nội dung sơ đồ, sửa `docs/ERD.svg` rồi xuất lại JPG.
+Khi đưa vào `slide-report/Report.docx`: chèn trực tiếp file `erd-dictionary/ERD.jpg` vào Word (Insert → Pictures). Nếu cần sửa nội dung sơ đồ, sửa `erd-dictionary/ERD.svg` rồi xuất lại JPG.
 
 ## Giải thích các entity và quan hệ
 
@@ -30,4 +30,4 @@ Khi đưa vào `material/Report.docx`: chèn trực tiếp file `docs/ERD.jpg` v
 - Doanh số không gắn thẳng vào `Game`, mà gắn với từng cặp (`Game_Platform`, `Region`) cụ thể qua quan hệ N-N `Sold_in` (mang thuộc tính `num_sales`), vì cùng 1 game trên các platform/publisher khác nhau có doanh số khác nhau ở từng khu vực.
 - Khi chuyển sang mô hình quan hệ (relational model), 2 thực thể trung gian `Game_Publisher`/`Game_Platform` trở thành bảng riêng (có khoá chính `id`), còn quan hệ N-N `Sold_in` trở thành bảng `region_sales` với khoá chính phức hợp `(region_id, game_platform_id)` - xem chi tiết trong `sql/quantl3/G7_Dbscript.sql`.
 
-> Xem đặc tả chi tiết từng thuộc tính tại [`docs/DataDictionary.md`](DataDictionary.md).
+> Xem đặc tả chi tiết từng thuộc tính tại [`erd-dictionary/DataDictionary.md`](DataDictionary.md).

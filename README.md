@@ -33,10 +33,10 @@ dbi202-assignment/
 │   │   └── 06_trigger.sql       # Vi - trigger
 │   └── quantl3/
 │       └── G7_Dbscript.sql      # Script gốc (Contributor: quantl3@fpt.edu.vn) - tạo bảng + insert dữ liệu thô, dùng để tham khảo/tách vào sql/trung/
-├── material/                # Bản nộp cuối cùng
+├── slide-report/                # Bản nộp cuối cùng
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
-├── docs/                    # Tai lieu thiet ke (Hoàng phu trach)
+├── erd-dictionary/          # Tai lieu thiet ke (Hoàng phu trach)
 │   ├── ERD.md               # So do ER (ky hieu Chen) + giai thich quan he giua cac entity
 │   ├── ERD.svg               # Sơ đồ ER dạng vector (nguồn, chỉnh sửa được)
 │   ├── ERD.jpg               # Sơ đồ ER xuất sẵn dạng ảnh (chèn thẳng vào báo cáo)
@@ -56,9 +56,9 @@ dbi202-assignment/
 
 1. Chọn một nghiệp vụ/hệ thống thực tế (nhóm chọn: **thống kê doanh số game theo khu vực/nền tảng/nhà phát hành**).
 2. Phát biểu bài toán, mô tả nghiệp vụ, liệt kê từng nghiệp vụ cụ thể.
-3. Xây dựng mô hình ER (đúng ký hiệu) cho hệ thống — đã có tại [`docs/ERD.md`](docs/ERD.md).
-4. Chuyển mô hình ER sang mô hình quan hệ, xác định phụ thuộc hàm, chuẩn hoá về **3NF** — xem giải thích trong [`docs/ERD.md`](docs/ERD.md).
-5. Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính quan trọng — đã có tại [`docs/DataDictionary.md`](docs/DataDictionary.md).
+3. Xây dựng mô hình ER (đúng ký hiệu) cho hệ thống — đã có tại [`erd-dictionary/ERD.md`](erd-dictionary/ERD.md).
+4. Chuyển mô hình ER sang mô hình quan hệ, xác định phụ thuộc hàm, chuẩn hoá về **3NF** — xem giải thích trong [`erd-dictionary/ERD.md`](erd-dictionary/ERD.md).
+5. Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính quan trọng — đã có tại [`erd-dictionary/DataDictionary.md`](erd-dictionary/DataDictionary.md).
 6. Liệt kê danh sách các ràng buộc dữ liệu.
 7. Cài đặt vật lý trên **SQL Server** (đã dựng sẵn template trong `sql/`, xem cấu trúc phía trên).
 8. Kết luận, hướng phát triển.
@@ -68,8 +68,8 @@ dbi202-assignment/
 ## Yêu cầu bên lề (theo ảnh nhóm trưởng gửi)
 
 - File SQL (theo cấu trúc trong `sql/`).
-- File `.docx` báo cáo (`material/Report.docx`): bìa, mục lục, danh mục hình vẽ, bảng biểu - Đặt vấn đề - Các bước giải quyết vấn đề - Kết luận, hướng phát triển - Tỷ lệ đóng góp mỗi thành viên.
-- File PowerPoint thuyết trình (`material/Slide.pptx`).
+- File `.docx` báo cáo (`slide-report/Report.docx`): bìa, mục lục, danh mục hình vẽ, bảng biểu - Đặt vấn đề - Các bước giải quyết vấn đề - Kết luận, hướng phát triển - Tỷ lệ đóng góp mỗi thành viên.
+- File PowerPoint thuyết trình (`slide-report/Slide.pptx`).
 - Mỗi nhóm có nhóm trưởng; nhóm trưởng đại diện gửi mail assignment, CC các thành viên trong nhóm.
 
 ## Áp dụng AI (điểm khuyến khích)
@@ -83,11 +83,11 @@ dbi202-assignment/
 ## Phân chia công việc
 
 **Hoàng (AI, nhóm trưởng):**
-- Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary — xem [`docs/ERD.md`](docs/ERD.md) và [`docs/DataDictionary.md`](docs/DataDictionary.md).
+- Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary — xem [`erd-dictionary/ERD.md`](erd-dictionary/ERD.md) và [`erd-dictionary/DataDictionary.md`](erd-dictionary/DataDictionary.md).
 - Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
 - Code/dev phần ứng dụng AI trong `ai/` (`ai/recommend.py`): hoàn thiện, test thử với dữ liệu thật, có thể mở rộng thêm (collaborative filtering theo doanh số vùng, sinh giải thích gợi ý bằng ngôn ngữ tự nhiên...).
 - Phần "Áp dụng AI" trong báo cáo + slide.
-- Tổng hợp `material/Report.docx`, làm `material/Slide.pptx`, gửi mail assignment (CC nhóm).
+- Tổng hợp `slide-report/Report.docx`, làm `slide-report/Slide.pptx`, gửi mail assignment (CC nhóm).
 
 **Trung (SE):**
 - Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
@@ -130,5 +130,5 @@ dbi202-assignment/
 ## Nộp bài
 
 Đóng gói theo tên `DBI202Project_CC_NNN_RN.zip` (CC = lớp, NNN = họ tên đầy đủ, RN = mã số/roll number — theo nguyên văn đề bài: *"CC is your class, NNN is your fullname and RN is your roll number"*), gồm:
-- Báo cáo `.docx`/`.pdf` (từ `material/Report.docx`).
+- Báo cáo `.docx`/`.pdf` (từ `slide-report/Report.docx`).
 - Toàn bộ file `.sql` trong `sql/`.

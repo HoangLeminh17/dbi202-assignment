@@ -2,7 +2,7 @@
 
 Phụ trách: Hoàng (AI)
 
-Theo đúng format mẫu trong đề bài (xem [`yeu-cau-assignment/MoTaDeBai.md`](../yeu-cau-assignment/MoTaDeBai.md), mục 5): mỗi thuộc tính gồm Data Element, Description, Composition or Data Type, Length, Values. Đối chiếu với schema đã cài đặt tại [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql) và [`docs/ERD.md`](ERD.md).
+Theo đúng format mẫu trong đề bài (xem [`yeu-cau-assignment/MoTaDeBai.md`](../yeu-cau-assignment/MoTaDeBai.md), mục 5): mỗi thuộc tính gồm Data Element, Description, Composition or Data Type, Length, Values. Đối chiếu với schema đã cài đặt tại [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql) và [`erd-dictionary/ERD.md`](ERD.md).
 
 ## Bảng `genre`
 
