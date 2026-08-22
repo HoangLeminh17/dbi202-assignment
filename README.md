@@ -36,6 +36,9 @@ dbi202-assignment/
 ├── material/                # Bản nộp cuối cùng
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
+└── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
+    ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)
+    └── requirements.txt     # Thu vien Python can cai (pyodbc, pandas, scikit-learn)
 ```
 
 ## Yêu cầu đề bài (tổng hợp từ `yeu-cau-assignment/Assignment1.docx` và `yeu-cau-assignment/Assignment2.docx`)
@@ -66,13 +69,14 @@ dbi202-assignment/
 
 - Dùng AI hỗ trợ sinh/tối ưu câu SQL (trigger, procedure, query phức tạp) - ghi rõ trong báo cáo phần nào có AI hỗ trợ.
 - Dùng AI phân tích dữ liệu game sales để đề xuất thêm nghiệp vụ/insight (ví dụ: xu hướng doanh số theo thể loại/khu vực), minh hoạ bằng query hoặc biểu đồ trong báo cáo.
-- Có thể làm thêm một stored procedure/API nhỏ mô phỏng "gợi ý game bán chạy theo khu vực" dựa trên dữ liệu hiện có, nêu rõ đây là phần mở rộng dùng AI hỗ trợ thiết kế.
+- **Đã code sẵn:** [`ai/recommend.py`](ai/recommend.py) — script Python goi y (recommend) game tương tự dựa trên thể loại/nhà phát hành/nền tảng (content-based filtering, dùng `scikit-learn`), kết nối trực tiếp vào database `Group7`. Hoàng phát triển thêm phần này, nêu rõ trong báo cáo đây là phần mở rộng ứng dụng AI.
 
 ## Phân chia công việc
 
 **Hoàng (AI, nhóm trưởng):**
 - Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary.
 - Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
+- Code/dev phần ứng dụng AI trong `ai/` (`ai/recommend.py`): hoàn thiện, test thử với dữ liệu thật, có thể mở rộng thêm (collaborative filtering theo doanh số vùng, sinh giải thích gợi ý bằng ngôn ngữ tự nhiên...).
 - Phần "Áp dụng AI" trong báo cáo + slide.
 - Tổng hợp `material/Report.docx`, làm `material/Slide.pptx`, gửi mail assignment (CC nhóm).
 
