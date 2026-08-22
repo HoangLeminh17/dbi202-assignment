@@ -2,13 +2,15 @@
 
 Đồ án môn Cơ sở dữ liệu (DBI202) - Chủ đề: **Video Game Sales** (database `Group7` với các bảng `platform`, `genre`, `publisher`, `region`, `game`, `game_publisher`, `game_platform`, `region_sales`).
 
+**Deadline: 23:59 24/08/2026**
+
 ## Thành viên nhóm
 
 | Tên | Chuyên ngành | Vai trò | Phụ trách chính |
 |---|---|---|---|
 | Hoàng | AI | Nhóm trưởng | Thiết kế ER/quan hệ, tổng hợp báo cáo & slide, mảng ứng dụng AI, gửi mail assignment (CC cả nhóm) |
 | Trung | SE | Thành viên | Cài đặt vật lý CSDL (`createDB.sql`, `insert.sql`, `procedure.sql`) |
-| Vi | An toàn thông tin (IS) | Thành viên | Ràng buộc dữ liệu, trigger, transaction (`constraints.sql`, `trigger.sql`, `transaction.sql`) |
+| Vi | IS | Thành viên | Ràng buộc dữ liệu, trigger, transaction (`constraints.sql`, `trigger.sql`, `transaction.sql`) |
 
 ## Cấu trúc thư mục
 
@@ -49,7 +51,7 @@ dbi202-assignment/
 7. Cài đặt vật lý trên **SQL Server** (đã dựng sẵn template trong `sql/`, xem cấu trúc phía trên).
 8. Kết luận, hướng phát triển.
 
-> `sql/quantl3/G7_Dbscript.sql` (Contributor: quantl3@fpt.edu.vn) hiện chỉ có tạo bảng + insert dữ liệu thô (chưa tách theo cấu trúc `sql/`, chưa có constraints/trigger/procedure/transaction/queries) — dùng làm nguồn tham khảo để Trung tách dữ liệu vào `sql/trung/03_insert.sql`.
+> `sql/quantl3/G7_Dbscript.sql` (Contributor: quantl3@fpt.edu.vn) hiện chỉ có tạo bảng + insert dữ liệu thô.
 
 ## Yêu cầu bên lề (theo ảnh nhóm trưởng gửi)
 
@@ -80,7 +82,7 @@ dbi202-assignment/
 - Viết `sql/trung/07_procedure.sql`.
 - Hỗ trợ phần cài đặt vật lý trong báo cáo.
 
-**Vi (An toàn thông tin):**
+**Vi (IS):**
 - Viết `sql/vi/02_constraints.sql` (≥3 ràng buộc: CHECK, UNIQUE, FK...).
 - Viết `sql/vi/06_trigger.sql` và `sql/vi/05_transaction.sql` (có ROLLBACK).
 - Đề xuất thêm khía cạnh bảo mật (phân quyền GRANT/REVOKE theo vai trò, kiểm tra rủi ro injection trong các câu query) - có thể tính là phần mở rộng cho báo cáo.
@@ -88,6 +90,20 @@ dbi202-assignment/
 **Chung cả nhóm:**
 - Thống nhất tỷ lệ đóng góp trước khi nộp để ghi vào báo cáo.
 - Review chéo (Lắng nghe & phản biện) trước khi hoàn thiện bản nộp cuối.
+
+## Hướng dẫn setup để dev tiếp
+
+1. Clone repo và cài **SQL Server** (Developer/Express edition) + **SQL Server Management Studio (SSMS)**.
+2. Chạy lần lượt các file `.sql` trong `sql/` theo đúng thứ tự phụ thuộc (mở bằng SSMS, kết nối tới instance local, rồi Execute):
+   1. `sql/trung/01_createDB.sql` — tạo database `Group7` và các bảng.
+   2. `sql/trung/03_insert.sql` — nạp dữ liệu mẫu (khi Trung đã tách xong từ `sql/quantl3/G7_Dbscript.sql`).
+   3. `sql/vi/02_constraints.sql` — thêm các ràng buộc.
+   4. `sql/vi/05_transaction.sql`, `sql/vi/06_trigger.sql` — transaction và trigger.
+   5. `sql/trung/07_procedure.sql` — stored procedure.
+   6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
+3. Nếu chỉ cần restore nhanh từ dữ liệu gốc: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database `Group7` đầy đủ dữ liệu, sau đó chạy tiếp `02_constraints.sql` → `06_trigger.sql` → `07_procedure.sql` để bổ sung các phần còn thiếu.
+4. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
+5. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
 
 ## Nộp bài
 
