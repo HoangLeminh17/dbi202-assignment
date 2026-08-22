@@ -115,4 +115,4 @@ Kết luận, hướng phát triển của đồ án.
 ## Ghi chú đối chiếu với repo hiện tại
 
 - Nhóm tách script theo cấu trúc nhiều file trong thư mục [`sql/`](../sql/), chia theo từng thư mục con tương ứng người phụ trách (`sql/hoang/`, `sql/trung/`, `sql/vi/`, `sql/quantl3/`) thay vì gộp vào 1 file `script.sql`, để dễ phân công theo từng thành viên — cần nêu rõ lý do này trong báo cáo.
-- Phần data dictionary và mô hình ER/quan hệ chưa có file riêng trong repo — cần bổ sung vào báo cáo [`material/Report.docx`](../material/Report.docx).
+- Phần data dictionary và mô hình ER/quan hệ đã có tại [`docs/ERD.md`](../docs/ERD.md) và [`docs/DataDictionary.md`](../docs/DataDictionary.md) — copy/đối chiếu nội dung này vào báo cáo [`material/Report.docx`](../material/Report.docx).
