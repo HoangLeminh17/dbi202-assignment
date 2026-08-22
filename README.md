@@ -107,6 +107,6 @@ dbi202-assignment/
 
 ## Nộp bài
 
-Đóng gói theo tên `DBI202Project_CC_NNN_RN.zip`, gồm:
+Đóng gói theo tên `DBI202Project_CC_NNN_RN.zip` (CC = lớp, NNN = họ tên đầy đủ, RN = mã số/roll number — theo nguyên văn đề bài: *"CC is your class, NNN is your fullname and RN is your roll number"*), gồm:
 - Báo cáo `.docx`/`.pdf` (từ `material/Report.docx`).
 - Toàn bộ file `.sql` trong `sql/`.

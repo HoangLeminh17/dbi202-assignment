@@ -107,7 +107,7 @@ Kết luận, hướng phát triển của đồ án.
 
 ## Nộp bài
 
-- Đóng gói toàn bộ file thành `DBI202Project_CC_NNN_RN.zip` (CC = lớp, NNN = họ tên đầy đủ, RN = mã số).
+- Đóng gói toàn bộ file thành `DBI202Project_CC_NNN_RN.zip` (CC = lớp, NNN = họ tên đầy đủ, RN = mã số/roll number — theo nguyên văn đề bài: *"CC is your class, NNN is your fullname and RN is your roll number"*).
 - Gồm: báo cáo cuối cùng dạng `.docx`/`.pdf` mô tả chi tiết toàn bộ các bước đã làm, và toàn bộ file `.sql` của project.
 - Database tham khảo: **AdventureWorks** (Microsoft SQL Server sample DB).
 - Tiêu chí review: **Lắng nghe & phản biện**.
