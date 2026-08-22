@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1380" font-family="Arial, Helvetica, sans-serif">
-  <rect x="0" y="0" width="1900" height="1380" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1340" font-family="Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="1900" height="1340" fill="#ffffff"/>
 
   <text x="950" y="40" text-anchor="middle" font-size="26" font-weight="bold" fill="#1a1a1a">ERD - Group7 Video Game Sales (ky hieu Chen)</text>
 
@@ -24,24 +24,24 @@
     <line x1="870" y1="960" x2="870" y2="1008"/>
     <line x1="870" y1="1092" x2="870" y2="1150"/>
     <!-- Sold_in - num_sales attribute -->
-    <line x1="960" y1="1050" x2="1120" y2="1040"/>
+    <line x1="960" y1="1050" x2="1115" y2="1040"/>
   </g>
 
   <!-- ============ ATTRIBUTE - ENTITY connector lines (mau nhat) ============ -->
   <g stroke="#8fbf95" stroke-width="1.5" fill="none">
-    <line x1="200" y1="95" x2="235" y2="150"/>
-    <line x1="330" y1="98" x2="290" y2="150"/>
-    <line x1="670" y1="345" x2="750" y2="400"/>
-    <line x1="915" y1="345" x2="860" y2="400"/>
-    <line x1="1595" y1="95" x2="1610" y2="150"/>
-    <line x1="1770" y1="98" x2="1700" y2="150"/>
-    <line x1="670" y1="725" x2="790" y2="655"/>
-    <line x1="1595" y1="715" x2="1610" y2="770"/>
-    <line x1="1770" y1="715" x2="1700" y2="770"/>
-    <line x1="670" y1="915" x2="790" y2="905"/>
-    <line x1="670" y1="965" x2="790" y2="925"/>
-    <line x1="670" y1="1255" x2="790" y2="1215"/>
-    <line x1="900" y1="1255" x2="880" y2="1240"/>
+    <line x1="200" y1="100" x2="235" y2="150"/>
+    <line x1="330" y1="103" x2="290" y2="150"/>
+    <line x1="670" y1="350" x2="750" y2="400"/>
+    <line x1="915" y1="350" x2="860" y2="400"/>
+    <line x1="1595" y1="100" x2="1610" y2="150"/>
+    <line x1="1770" y1="103" x2="1700" y2="150"/>
+    <line x1="675" y1="748" x2="790" y2="660"/>
+    <line x1="1595" y1="703" x2="1610" y2="770"/>
+    <line x1="1770" y1="703" x2="1700" y2="770"/>
+    <line x1="675" y1="895" x2="790" y2="900"/>
+    <line x1="675" y1="985" x2="790" y2="930"/>
+    <line x1="675" y1="1280" x2="790" y2="1220"/>
+    <line x1="905" y1="1280" x2="880" y2="1240"/>
   </g>
 
   <!-- ============ ENTITIES (hinh chu nhat) ============ -->
@@ -114,62 +114,70 @@
     <text x="885" y="1108" font-size="15" font-weight="bold" fill="#111">N</text>
   </g>
 
-  <!-- ============ ATTRIBUTES (hinh oval) ============ -->
+  <!-- ============ ATTRIBUTES (hinh oval) - ten thuoc tinh + kieu du lieu ben duoi ============ -->
   <g>
     <!-- Genre attributes -->
-    <ellipse cx="170" cy="70" rx="65" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="170" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="380" cy="70" rx="90" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="380" y="75" text-anchor="middle" font-size="13" fill="#245a2f">genre_name</text>
+    <ellipse cx="170" cy="70" rx="65" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="170" y="66" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="170" y="83" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="380" cy="70" rx="90" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="380" y="66" text-anchor="middle" font-size="13" fill="#245a2f">genre_name</text>
+    <text x="380" y="83" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(50)</text>
 
     <!-- Game attributes -->
-    <ellipse cx="640" cy="330" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="640" y="335" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="925" cy="330" rx="85" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="925" y="335" text-anchor="middle" font-size="13" fill="#245a2f">game_name</text>
+    <ellipse cx="640" cy="330" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="640" y="326" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="640" y="343" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="925" cy="330" rx="90" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="925" y="326" text-anchor="middle" font-size="13" fill="#245a2f">game_name</text>
+    <text x="925" y="343" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(200)</text>
 
     <!-- Publisher attributes -->
-    <ellipse cx="1570" cy="70" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="1570" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="1790" cy="70" rx="100" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="1790" y="75" text-anchor="middle" font-size="13" fill="#245a2f">publisher_name</text>
+    <ellipse cx="1570" cy="70" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1570" y="66" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="1570" y="83" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="1795" cy="70" rx="100" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1795" y="66" text-anchor="middle" font-size="13" fill="#245a2f">publisher_name</text>
+    <text x="1795" y="83" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(100)</text>
 
     <!-- Game_Publisher attributes -->
-    <ellipse cx="640" cy="735" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="640" y="740" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <ellipse cx="640" cy="752" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="640" y="748" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="640" y="765" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
 
     <!-- Platform attributes -->
-    <ellipse cx="1570" cy="715" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="1570" y="720" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="1790" cy="715" rx="95" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="1790" y="720" text-anchor="middle" font-size="13" fill="#245a2f">platform_name</text>
+    <ellipse cx="1570" cy="705" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1570" y="701" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="1570" y="718" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="1795" cy="705" rx="95" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1795" y="701" text-anchor="middle" font-size="13" fill="#245a2f">platform_name</text>
+    <text x="1795" y="718" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(50)</text>
 
     <!-- Game_Platform attributes -->
-    <ellipse cx="640" cy="905" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="640" y="910" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="640" cy="965" rx="85" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="640" y="970" text-anchor="middle" font-size="13" fill="#245a2f">release_year</text>
+    <ellipse cx="640" cy="895" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="640" y="891" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="640" y="908" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="640" cy="985" rx="90" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="640" y="981" text-anchor="middle" font-size="13" fill="#245a2f">release_year</text>
+    <text x="640" y="998" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
 
     <!-- Region attributes -->
-    <ellipse cx="650" cy="1265" rx="60" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="650" y="1270" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
-    <ellipse cx="905" cy="1265" rx="90" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="905" y="1270" text-anchor="middle" font-size="13" fill="#245a2f">region_name</text>
+    <ellipse cx="650" cy="1280" rx="60" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="650" y="1276" text-anchor="middle" font-size="13" font-weight="bold" fill="#245a2f" text-decoration="underline">id</text>
+    <text x="650" y="1293" text-anchor="middle" font-size="10.5" fill="#4a7a52">INT</text>
+
+    <ellipse cx="915" cy="1280" rx="95" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="915" y="1276" text-anchor="middle" font-size="13" fill="#245a2f">region_name</text>
+    <text x="915" y="1293" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(50)</text>
 
     <!-- Sold_in attribute -->
-    <ellipse cx="1195" cy="1038" rx="80" ry="26" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="1195" y="1043" text-anchor="middle" font-size="13" fill="#245a2f">num_sales</text>
-  </g>
-
-  <!-- ============ LEGEND ============ -->
-  <g font-size="14">
-    <rect x="150" y="1300" width="36" height="22" fill="#dbe9fb" stroke="#2c4870" stroke-width="2"/>
-    <text x="196" y="1317" fill="#1a1a1a">Entity (thuc the)</text>
-
-    <polygon points="470,1290 495,1311 470,1332 445,1311" fill="#fdf1cf" stroke="#c9971b" stroke-width="2"/>
-    <text x="510" y="1317" fill="#1a1a1a">Relationship (quan he)</text>
-
-    <ellipse cx="820" cy="1311" rx="30" ry="18" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
-    <text x="865" y="1317" fill="#1a1a1a">Attribute; <tspan text-decoration="underline" font-weight="bold">id</tspan> = khoa chinh (PK)</text>
+    <ellipse cx="1195" cy="1038" rx="85" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1195" y="1034" text-anchor="middle" font-size="13" fill="#245a2f">num_sales</text>
+    <text x="1195" y="1051" text-anchor="middle" font-size="10.5" fill="#4a7a52">DECIMAL(5,2)</text>
   </g>
 </svg>

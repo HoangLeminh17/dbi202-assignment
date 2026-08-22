@@ -37,7 +37,9 @@ dbi202-assignment/
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
 ├── docs/                    # Tai lieu thiet ke (Hoàng phu trach)
-│   ├── ERD.md               # So do ER (mermaid) + giai thich quan he giua cac entity
+│   ├── ERD.md               # So do ER (ky hieu Chen) + giai thich quan he giua cac entity
+│   ├── ERD.svg               # Sơ đồ ER dạng vector (nguồn, chỉnh sửa được)
+│   ├── ERD.jpg               # Sơ đồ ER xuất sẵn dạng ảnh (chèn thẳng vào báo cáo)
 │   └── DataDictionary.md    # Dac ta yeu cau du lieu (data dictionary) cho tung thuoc tinh
 ├── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
 │   ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)

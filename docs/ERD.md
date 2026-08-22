@@ -4,11 +4,11 @@ Phụ trách: Hoàng (AI)
 
 Sơ đồ dưới đây mô tả mô hình ER tương ứng với schema đã cài đặt trong [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql), vẽ theo **ký hiệu Chen** (entity = hình chữ nhật, relationship = hình thoi, attribute = hình oval, khoá chính gạch chân) - đúng chuẩn được yêu cầu trong đề bài, thay vì ký hiệu crow's foot của Mermaid.
 
-File nguồn: [`docs/ERD.svg`](ERD.svg) (mở trực tiếp bằng trình duyệt để xem/phóng to, hoặc mở bằng Inkscape/Illustrator nếu cần chỉnh sửa thêm).
+File nguồn (vector, chỉnh sửa được): [`docs/ERD.svg`](ERD.svg) - mở trực tiếp bằng trình duyệt để xem/phóng to, hoặc bằng Inkscape/Illustrator nếu cần sửa. File ảnh xuất sẵn để chèn vào báo cáo: [`docs/ERD.jpg`](ERD.jpg).
 
-![ERD Group7 Video Game Sales](ERD.svg)
+![ERD Group7 Video Game Sales](ERD.jpg)
 
-Khi đưa vào `material/Report.docx`: mở `docs/ERD.svg` bằng trình duyệt (Chrome/Edge), chụp màn hình hoặc dùng chức năng "Print to PDF/Export" rồi chèn ảnh vào Word.
+Khi đưa vào `material/Report.docx`: chèn trực tiếp file `docs/ERD.jpg` vào Word (Insert → Pictures). Nếu cần sửa nội dung sơ đồ, sửa `docs/ERD.svg` rồi xuất lại JPG.
 
 ## Giải thích các entity và quan hệ
 
