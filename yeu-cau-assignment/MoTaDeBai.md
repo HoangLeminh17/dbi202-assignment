@@ -17,20 +17,28 @@ Thư mục này chứa 2 file đề bài gốc do giảng viên cung cấp cho �
 
 ### 1. Chọn hệ thống / nghiệp vụ
 
-Làm việc theo nhóm, chọn một hệ thống/nghiệp vụ thực tế để nghiên cứu (có thể dựa trên dữ liệu/thông tin của một website nhỏ nào đó). Nhóm 7 chọn chủ đề **video game sales**.
+Nhóm 7 chọn chủ đề **video game sales**.
+
+> Ví dụ (sẽ làm): mô tả ngắn gọn hệ thống thống kê doanh số bán game theo khu vực, nền tảng, thể loại và nhà phát hành, dựa trên dataset video game sales.
 
 ### 2. Phát biểu bài toán & mô tả nghiệp vụ
 
 - Mô tả chi tiết cách hệ thống hoạt động: các entity và chức năng của chúng, thông tin cần cho mỗi entity, luồng công việc (workflow).
 - Liệt kê từng nghiệp vụ cụ thể của hệ thống.
 
+> Ví dụ (sẽ làm): liệt kê các nghiệp vụ như "thêm game mới", "gán game cho nhà phát hành/nền tảng", "ghi nhận doanh số theo khu vực", "thống kê doanh số theo thể loại/nền tảng/khu vực".
+
 ### 3. Mô hình ER
 
 Xây dựng mô hình Entity/Relationship (ER) cho hệ thống, vẽ đúng ký hiệu chuẩn.
 
+> Ví dụ (output sẽ trông như): một sơ đồ ER gồm các entity `game`, `genre`, `publisher`, `platform`, `region`, với các quan hệ 1-n / n-n tương ứng (vd: một game thuộc 1 genre, một game có thể được nhiều publisher phát hành trên nhiều platform, mỗi cặp game-platform có doanh số theo từng region) — vẽ bằng draw.io/dbdiagram.io rồi chèn ảnh vào báo cáo.
+
 ### 4. Mô hình quan hệ & chuẩn hoá
 
 Chuyển mô hình ER sang mô hình quan hệ (relational model) với các quan hệ và phụ thuộc hàm tương ứng, chuẩn hoá về **3NF**.
+
+> Ví dụ (sẽ làm): liệt kê các quan hệ `game(id, genre_id, game_name)`, `game_publisher(id, game_id, publisher_id)`, `game_platform(id, game_publisher_id, platform_id, release_year)`, `region_sales(region_id, game_platform_id, num_sales)` kèm phụ thuộc hàm và giải thích vì sao đã đạt 3NF (không có phụ thuộc bắc cầu).
 
 ### 5. Đặc tả yêu cầu dữ liệu (Data dictionary)
 
@@ -44,13 +52,17 @@ Ví dụ minh hoạ từ đề bài (Assignment2):
 | delivery location | toà nhà và phòng cần giao suất ăn đã đặt | alphanumeric | 50 | cho phép dấu gạch ngang và dấu phẩy |
 | delivery time window | thời điểm bắt đầu của khoảng 15 phút trong ngày đặt ăn để giao suất ăn | time | hh:mm | giờ địa phương; hh = 0-23, mm = 00/15/30/45 |
 
+> Ví dụ (sẽ làm): áp dụng mẫu bảng trên cho thuộc tính `num_sales` (region_sales) — Description: "doanh số bán (triệu bản) của một game trên một nền tảng tại một khu vực"; Composition/Data Type: decimal; Length: (5,2); Values: >= 0.
+
 ### 6. Danh sách ràng buộc dữ liệu
 
 Liệt kê các ràng buộc dữ liệu của hệ thống.
 
+> Ví dụ (sẽ làm): `num_sales >= 0`, `release_year` nằm trong khoảng hợp lý (1970–2100), `game_name` không trùng lặp, mỗi `game_platform` phải gắn với đúng 1 `game_publisher` đã tồn tại.
+
 ### 7. Cài đặt vật lý trên SQL Server
 
-Tách thành các file `.sql` riêng (theo Assignment1; Assignment2 chấp nhận gộp chung vào `script.sql`):
+Tách thành các file `.sql` riêng theo từng người phụ trách (xem [`sql/`](../sql/) và bảng phân công trong [README.md](../README.md)):
 
 - `createDB.sql` — tạo database và các bảng bằng câu lệnh SQL.
 - `constraints.sql` — tối thiểu 3 ràng buộc bằng `ALTER TABLE`.
@@ -67,21 +79,31 @@ Viết tối thiểu 1 câu truy vấn cho mỗi loại sau, lưu trong `queries
 - Dùng subquery trong `FROM`.
 - Query dùng `GROUP BY` và hàm aggregate.
 
+> Ví dụ (output sẽ trông như): kết quả câu query "tổng doanh số theo thể loại" trả về bảng 2 cột `genre_name`, `total_sales`, sắp xếp giảm dần — chụp màn hình kết quả trong SSMS và chèn vào báo cáo.
+
 ### 9. Transaction
 
 Viết tối thiểu 1 transaction có dùng `ROLLBACK`, lưu trong `transaction.sql`.
+
+> Ví dụ (sẽ làm): transaction thêm một game mới kèm publisher, platform và doanh số ban đầu trong cùng 1 giao dịch — nếu bước ghi doanh số lỗi thì rollback toàn bộ, không để game "mồ côi" dữ liệu.
 
 ### 10. Trigger
 
 Viết tối thiểu 1 trigger để cài đặt ràng buộc phức tạp, lưu trong `trigger.sql`.
 
+> Ví dụ (sẽ làm): trigger chặn insert/update `region_sales` khi `num_sales` âm, hoặc trigger tự động ghi log mỗi khi doanh số một game thay đổi.
+
 ### 11. Procedure / Function
 
 Viết tối thiểu 1 stored procedure (và hàm nếu cần) để giải quyết nghiệp vụ, lưu trong `procedure.sql`.
 
+> Ví dụ (sẽ làm): procedure `sp_GetTopGamesByRegion(@RegionId, @TopN)` trả về top N game bán chạy nhất tại một khu vực.
+
 ### 12. Kết luận
 
 Kết luận, hướng phát triển của đồ án.
+
+> Ví dụ (sẽ làm): tóm tắt các nghiệp vụ đã cài đặt, hạn chế hiện tại (vd: chưa có dữ liệu theo thời gian thực), hướng phát triển (vd: thêm bảng đánh giá/review game, tích hợp AI để gợi ý game theo xu hướng khu vực).
 
 ## Nộp bài
 
