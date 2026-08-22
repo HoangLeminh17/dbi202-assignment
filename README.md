@@ -1,2 +1,96 @@
-# dbi202-assignment
-Assignment nhóm 7
+# DBI202 - Assignment Nhóm 7
+
+Đồ án môn Cơ sở dữ liệu (DBI202) - Chủ đề: **Video Game Sales** (database `Group7` với các bảng `platform`, `genre`, `publisher`, `region`, `game`, `game_publisher`, `game_platform`, `region_sales`).
+
+## Thành viên nhóm
+
+| Tên | Chuyên ngành | Vai trò | Phụ trách chính |
+|---|---|---|---|
+| Hoàng | AI | Nhóm trưởng | Thiết kế ER/quan hệ, tổng hợp báo cáo & slide, mảng ứng dụng AI, gửi mail assignment (CC cả nhóm) |
+| Trung | SE | Thành viên | Cài đặt vật lý CSDL (`createDB.sql`, `insert.sql`, `procedure.sql`) |
+| Vi | An toàn thông tin (IS) | Thành viên | Ràng buộc dữ liệu, trigger, transaction (`constraints.sql`, `trigger.sql`, `transaction.sql`) |
+
+## Cấu trúc thư mục
+
+```
+dbi202-assignment/
+├── yeu-cau-assignment/      # Đề bài gốc
+│   ├── Assignment1.docx     # Đề bài tiếng Anh (khung yêu cầu chung)
+│   ├── Assignment2.docx     # Đề bài tiếng Việt (chi tiết nội dung báo cáo)
+│   └── MoTaDeBai.md         # Tóm tắt tiếng Việt nội dung 2 file đề bài trên
+├── sql/                     # Các file .sql theo yêu cầu, tách riêng theo từng người phụ trách
+│   ├── hoang/
+│   │   └── 04_queries.sql       # Hoàng - các câu query yêu cầu
+│   ├── trung/
+│   │   ├── 01_createDB.sql      # Trung - tạo database + bảng
+│   │   ├── 03_insert.sql        # Trung - dữ liệu mẫu
+│   │   └── 07_procedure.sql     # Trung - stored procedure
+│   ├── vi/
+│   │   ├── 02_constraints.sql   # Vi - ràng buộc (ALTER TABLE)
+│   │   ├── 05_transaction.sql   # Vi - transaction + rollback
+│   │   └── 06_trigger.sql       # Vi - trigger
+│   └── quantl3/
+│       └── G7_Dbscript.sql      # Script gốc (Contributor: quantl3@fpt.edu.vn) - tạo bảng + insert dữ liệu thô, dùng để tham khảo/tách vào sql/trung/
+├── material/                # Bản nộp cuối cùng
+│   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
+│   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
+```
+
+## Yêu cầu đề bài (tổng hợp từ `yeu-cau-assignment/Assignment1.docx` và `yeu-cau-assignment/Assignment2.docx`)
+
+> Xem tóm tắt chi tiết bằng tiếng Việt tại [`yeu-cau-assignment/MoTaDeBai.md`](yeu-cau-assignment/MoTaDeBai.md).
+
+1. Chọn một nghiệp vụ/hệ thống thực tế (nhóm chọn: **thống kê doanh số game theo khu vực/nền tảng/nhà phát hành**).
+2. Phát biểu bài toán, mô tả nghiệp vụ, liệt kê từng nghiệp vụ cụ thể.
+3. Xây dựng mô hình ER (đúng ký hiệu) cho hệ thống.
+4. Chuyển mô hình ER sang mô hình quan hệ, xác định phụ thuộc hàm, chuẩn hoá về **3NF**.
+5. Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính quan trọng.
+6. Liệt kê danh sách các ràng buộc dữ liệu.
+7. Cài đặt vật lý trên **SQL Server** (đã dựng sẵn template trong `sql/`, xem cấu trúc phía trên).
+8. Kết luận, hướng phát triển.
+
+> `sql/quantl3/G7_Dbscript.sql` (Contributor: quantl3@fpt.edu.vn) hiện chỉ có tạo bảng + insert dữ liệu thô (chưa tách theo cấu trúc `sql/`, chưa có constraints/trigger/procedure/transaction/queries) — dùng làm nguồn tham khảo để Trung tách dữ liệu vào `sql/trung/03_insert.sql`.
+
+## Yêu cầu bên lề (theo ảnh nhóm trưởng gửi)
+
+- File SQL (theo cấu trúc trong `sql/`).
+- File `.docx` báo cáo (`material/Report.docx`): bìa, mục lục, danh mục hình vẽ, bảng biểu - Đặt vấn đề - Các bước giải quyết vấn đề - Kết luận, hướng phát triển - Tỷ lệ đóng góp mỗi thành viên.
+- File PowerPoint thuyết trình (`material/Slide.pptx`).
+- Mỗi nhóm có nhóm trưởng; nhóm trưởng đại diện gửi mail assignment, CC các thành viên trong nhóm.
+
+## Áp dụng AI (điểm khuyến khích)
+
+Đề bài khuyến khích áp dụng AI để tăng điểm. Gợi ý cách áp dụng phù hợp với dữ liệu game sales:
+
+- Dùng AI hỗ trợ sinh/tối ưu câu SQL (trigger, procedure, query phức tạp) - ghi rõ trong báo cáo phần nào có AI hỗ trợ.
+- Dùng AI phân tích dữ liệu game sales để đề xuất thêm nghiệp vụ/insight (ví dụ: xu hướng doanh số theo thể loại/khu vực), minh hoạ bằng query hoặc biểu đồ trong báo cáo.
+- Có thể làm thêm một stored procedure/API nhỏ mô phỏng "gợi ý game bán chạy theo khu vực" dựa trên dữ liệu hiện có, nêu rõ đây là phần mở rộng dùng AI hỗ trợ thiết kế.
+
+## Phân chia công việc
+
+**Hoàng (AI, nhóm trưởng):**
+- Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary.
+- Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
+- Phần "Áp dụng AI" trong báo cáo + slide.
+- Tổng hợp `material/Report.docx`, làm `material/Slide.pptx`, gửi mail assignment (CC nhóm).
+
+**Trung (SE):**
+- Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
+- Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
+- Viết `sql/trung/07_procedure.sql`.
+- Hỗ trợ phần cài đặt vật lý trong báo cáo.
+
+**Vi (An toàn thông tin):**
+- Viết `sql/vi/02_constraints.sql` (≥3 ràng buộc: CHECK, UNIQUE, FK...).
+- Viết `sql/vi/06_trigger.sql` và `sql/vi/05_transaction.sql` (có ROLLBACK).
+- Đề xuất thêm khía cạnh bảo mật (phân quyền GRANT/REVOKE theo vai trò, kiểm tra rủi ro injection trong các câu query) - có thể tính là phần mở rộng cho báo cáo.
+
+**Chung cả nhóm:**
+- Thống nhất tỷ lệ đóng góp trước khi nộp để ghi vào báo cáo.
+- Review chéo (Lắng nghe & phản biện) trước khi hoàn thiện bản nộp cuối.
+
+## Nộp bài
+
+Đóng gói theo tên `DBI202Project_CC_NNN_RN.zip`, gồm:
+- Báo cáo `.docx`/`.pdf` (từ `material/Report.docx`).
+- Toàn bộ file `.sql` trong `sql/`.
