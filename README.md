@@ -36,6 +36,9 @@ dbi202-assignment/
 ├── material/                # Bản nộp cuối cùng
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
+├── docs/                    # Tai lieu thiet ke (Hoàng phu trach)
+│   ├── ERD.md               # So do ER (mermaid) + giai thich quan he giua cac entity
+│   └── DataDictionary.md    # Dac ta yeu cau du lieu (data dictionary) cho tung thuoc tinh
 ├── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
 │   ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)
 │   └── requirements.txt     # Thu vien Python can cai (pyodbc, pandas, scikit-learn)
@@ -51,9 +54,9 @@ dbi202-assignment/
 
 1. Chọn một nghiệp vụ/hệ thống thực tế (nhóm chọn: **thống kê doanh số game theo khu vực/nền tảng/nhà phát hành**).
 2. Phát biểu bài toán, mô tả nghiệp vụ, liệt kê từng nghiệp vụ cụ thể.
-3. Xây dựng mô hình ER (đúng ký hiệu) cho hệ thống.
-4. Chuyển mô hình ER sang mô hình quan hệ, xác định phụ thuộc hàm, chuẩn hoá về **3NF**.
-5. Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính quan trọng.
+3. Xây dựng mô hình ER (đúng ký hiệu) cho hệ thống — đã có tại [`docs/ERD.md`](docs/ERD.md).
+4. Chuyển mô hình ER sang mô hình quan hệ, xác định phụ thuộc hàm, chuẩn hoá về **3NF** — xem giải thích trong [`docs/ERD.md`](docs/ERD.md).
+5. Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính quan trọng — đã có tại [`docs/DataDictionary.md`](docs/DataDictionary.md).
 6. Liệt kê danh sách các ràng buộc dữ liệu.
 7. Cài đặt vật lý trên **SQL Server** (đã dựng sẵn template trong `sql/`, xem cấu trúc phía trên).
 8. Kết luận, hướng phát triển.
@@ -78,7 +81,7 @@ dbi202-assignment/
 ## Phân chia công việc
 
 **Hoàng (AI, nhóm trưởng):**
-- Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary.
+- Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary — xem [`docs/ERD.md`](docs/ERD.md) và [`docs/DataDictionary.md`](docs/DataDictionary.md).
 - Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
 - Code/dev phần ứng dụng AI trong `ai/` (`ai/recommend.py`): hoàn thiện, test thử với dữ liệu thật, có thể mở rộng thêm (collaborative filtering theo doanh số vùng, sinh giải thích gợi ý bằng ngôn ngữ tự nhiên...).
 - Phần "Áp dụng AI" trong báo cáo + slide.
