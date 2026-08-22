@@ -2,74 +2,32 @@
 
 Phụ trách: Hoàng (AI)
 
-Sơ đồ dưới đây mô tả mô hình ER tương ứng với schema đã cài đặt trong [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql). Vẽ bằng cú pháp [Mermaid ER diagram](https://mermaid.js.org/syntax/entityRelationshipDiagram.html) - GitHub và nhiều trình xem Markdown render trực tiếp được, không cần cài thêm công cụ. Khi đưa vào `material/Report.docx`, export hình bằng cách paste đoạn mermaid vào https://mermaid.live rồi chụp/export PNG.
+Sơ đồ dưới đây mô tả mô hình ER tương ứng với schema đã cài đặt trong [`sql/quantl3/G7_Dbscript.sql`](../sql/quantl3/G7_Dbscript.sql), vẽ theo **ký hiệu Chen** (entity = hình chữ nhật, relationship = hình thoi, attribute = hình oval, khoá chính gạch chân) - đúng chuẩn được yêu cầu trong đề bài, thay vì ký hiệu crow's foot của Mermaid.
 
-```mermaid
-erDiagram
-    GENRE ||--o{ GAME : "phan loai"
-    GAME ||--o{ GAME_PUBLISHER : "duoc phat hanh boi"
-    PUBLISHER ||--o{ GAME_PUBLISHER : "phat hanh"
-    GAME_PUBLISHER ||--o{ GAME_PLATFORM : "phat hanh tren"
-    PLATFORM ||--o{ GAME_PLATFORM : "chua"
-    GAME_PLATFORM ||--o{ REGION_SALES : "ghi nhan doanh so"
-    REGION ||--o{ REGION_SALES : "theo khu vuc"
+File nguồn: [`docs/ERD.svg`](ERD.svg) (mở trực tiếp bằng trình duyệt để xem/phóng to, hoặc mở bằng Inkscape/Illustrator nếu cần chỉnh sửa thêm).
 
-    GENRE {
-        int id PK
-        varchar genre_name
-    }
-    GAME {
-        int id PK
-        int genre_id FK
-        varchar game_name
-    }
-    PUBLISHER {
-        int id PK
-        varchar publisher_name
-    }
-    GAME_PUBLISHER {
-        int id PK
-        int game_id FK
-        int publisher_id FK
-    }
-    PLATFORM {
-        int id PK
-        varchar platform_name
-    }
-    GAME_PLATFORM {
-        int id PK
-        int game_publisher_id FK
-        int platform_id FK
-        int release_year
-    }
-    REGION {
-        int id PK
-        varchar region_name
-    }
-    REGION_SALES {
-        int region_id PK_FK
-        int game_platform_id PK_FK
-        decimal num_sales
-    }
-```
+![ERD Group7 Video Game Sales](ERD.svg)
+
+Khi đưa vào `material/Report.docx`: mở `docs/ERD.svg` bằng trình duyệt (Chrome/Edge), chụp màn hình hoặc dùng chức năng "Print to PDF/Export" rồi chèn ảnh vào Word.
 
 ## Giải thích các entity và quan hệ
 
 | Entity | Vai trò | Quan hệ |
 |---|---|---|
-| `genre` | Thể loại game (Action, RPG, Sports...) | 1 genre - N game |
-| `game` | Một tựa game cụ thể | N game - 1 genre; 1 game có thể có N bản ghi phát hành (game_publisher) |
-| `publisher` | Nhà phát hành game | 1 publisher - N game_publisher |
-| `game_publisher` | Bảng trung gian: 1 game do 1 publisher phát hành | N-1 với game, N-1 với publisher; 1 game_publisher có thể có N bản phát hành theo platform (game_platform) |
-| `platform` | Nền tảng chơi game (PS4, Xbox, PC...) | 1 platform - N game_platform |
-| `game_platform` | Bảng trung gian: 1 bản phát hành (game_publisher) trên 1 platform, kèm năm phát hành | N-1 với game_publisher, N-1 với platform; 1 game_platform có N bản ghi doanh số theo vùng (region_sales) |
-| `region` | Khu vực địa lý (NA, EU, JP, Other...) | 1 region - N region_sales |
-| `region_sales` | Doanh số bán của 1 game_platform tại 1 region | N-1 với game_platform, N-1 với region (khoá chính phức hợp) |
+| `Genre` | Thể loại game (Action, RPG, Sports...) | 1 Genre - N Game (quan hệ `Classifies`) |
+| `Game` | Một tựa game cụ thể | N Game - 1 Genre; 1 Game có thể có N bản ghi phát hành (`Game_Publisher`) qua quan hệ `Published_as` |
+| `Publisher` | Nhà phát hành game | 1 Publisher - N Game_Publisher (quan hệ `Publishes`) |
+| `Game_Publisher` | Thực thể trung gian: 1 Game do 1 Publisher phát hành | N-1 với Game (`Published_as`), N-1 với Publisher (`Publishes`); 1 Game_Publisher có thể có N bản phát hành theo nền tảng (`Game_Platform`) qua quan hệ `Released_on` |
+| `Platform` | Nền tảng chơi game (PS4, Xbox, PC...) | 1 Platform - N Game_Platform (quan hệ `Hosts`) |
+| `Game_Platform` | Thực thể trung gian: 1 bản phát hành (Game_Publisher) trên 1 Platform, kèm năm phát hành | N-1 với Game_Publisher (`Released_on`), N-1 với Platform (`Hosts`); N-N với Region qua quan hệ `Sold_in` |
+| `Region` | Khu vực địa lý (NA, EU, JP, Other...) | N-N với Game_Platform qua quan hệ `Sold_in` |
+| `Sold_in` | Quan hệ N-N giữa Game_Platform và Region, mang thuộc tính `num_sales` (tương ứng bảng `region_sales` trong mô hình quan hệ) | N Game_Platform - N Region |
 
 ## Lý do thiết kế 2 bảng trung gian (`game_publisher`, `game_platform`)
 
-- Một game có thể được nhiều publisher phát hành ở các khu vực/thời điểm khác nhau (n-n giữa `game` và `publisher`) → tách thành `game_publisher`.
-- Một bản phát hành (game_publisher) có thể ra mắt trên nhiều platform vào các năm khác nhau (n-n giữa `game_publisher` và `platform`) → tách thành `game_platform`.
-- Doanh số (`region_sales`) gắn với từng cặp (`game_platform`, `region`) cụ thể, không gắn thẳng vào `game`, vì cùng 1 game trên các platform/publisher khác nhau có doanh số khác nhau.
+- Một game có thể được nhiều publisher phát hành ở các khu vực/thời điểm khác nhau (n-n giữa `Game` và `Publisher`) → tách thành thực thể trung gian `Game_Publisher`.
+- Một bản phát hành (`Game_Publisher`) có thể ra mắt trên nhiều platform vào các năm khác nhau (n-n giữa `Game_Publisher` và `Platform`) → tách thành thực thể trung gian `Game_Platform`.
+- Doanh số không gắn thẳng vào `Game`, mà gắn với từng cặp (`Game_Platform`, `Region`) cụ thể qua quan hệ N-N `Sold_in` (mang thuộc tính `num_sales`), vì cùng 1 game trên các platform/publisher khác nhau có doanh số khác nhau ở từng khu vực.
+- Khi chuyển sang mô hình quan hệ (relational model), 2 thực thể trung gian `Game_Publisher`/`Game_Platform` trở thành bảng riêng (có khoá chính `id`), còn quan hệ N-N `Sold_in` trở thành bảng `region_sales` với khoá chính phức hợp `(region_id, game_platform_id)` - xem chi tiết trong `sql/quantl3/G7_Dbscript.sql`.
 
 > Xem đặc tả chi tiết từng thuộc tính tại [`docs/DataDictionary.md`](DataDictionary.md).
