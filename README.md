@@ -22,15 +22,15 @@ dbi202-assignment/
 │   └── MoTaDeBai.md         # Tóm tắt tiếng Việt nội dung 2 file đề bài trên
 ├── sql/                     # Các file .sql theo yêu cầu, tách riêng theo từng người phụ trách
 │   ├── hoang/
-│   │   └── queries.sql       # Hoàng - các câu query yêu cầu
+│   │   └── 04_queries.sql       # Hoàng - các câu query yêu cầu
 │   ├── trung/
-│   │   ├── createDB.sql      # Trung - tạo database + bảng
-│   │   ├── insert.sql        # Trung - dữ liệu mẫu
-│   │   └── procedure.sql     # Trung - stored procedure
+│   │   ├── 01_createDB.sql      # Trung - tạo database + bảng
+│   │   ├── 03_insert.sql        # Trung - dữ liệu mẫu
+│   │   └── 07_procedure.sql     # Trung - stored procedure
 │   ├── vi/
-│   │   ├── constraints.sql   # Vi - ràng buộc (ALTER TABLE)
-│   │   ├── transaction.sql   # Vi - transaction + rollback
-│   │   └── trigger.sql       # Vi - trigger
+│   │   ├── 02_constraints.sql   # Vi - ràng buộc (ALTER TABLE)
+│   │   ├── 05_transaction.sql   # Vi - transaction + rollback
+│   │   └── 06_trigger.sql       # Vi - trigger
 │   └── quantl3/
 │       └── G7_Dbscript.sql      # Script gốc (Contributor: quantl3@fpt.edu.vn) - tạo bảng + insert dữ liệu thô, dùng để tham khảo/tách vào sql/trung/
 ├── material/                # Bản nộp cuối cùng
@@ -72,19 +72,19 @@ dbi202-assignment/
 
 **Hoàng (AI, nhóm trưởng):**
 - Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary.
-- Viết `sql/hoang/queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
+- Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
 - Phần "Áp dụng AI" trong báo cáo + slide.
 - Tổng hợp `material/Report.docx`, làm `material/Slide.pptx`, gửi mail assignment (CC nhóm).
 
 **Trung (SE):**
-- Hoàn thiện `sql/trung/createDB.sql` và `sql/trung/insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
+- Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
 - Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
-- Viết `sql/trung/procedure.sql`.
+- Viết `sql/trung/07_procedure.sql`.
 - Hỗ trợ phần cài đặt vật lý trong báo cáo.
 
 **Vi (IS):**
-- Viết `sql/vi/constraints.sql` (≥3 ràng buộc: CHECK, UNIQUE, FK...).
-- Viết `sql/vi/trigger.sql` và `sql/vi/transaction.sql` (có ROLLBACK).
+- Viết `sql/vi/02_constraints.sql` (≥3 ràng buộc: CHECK, UNIQUE, FK...).
+- Viết `sql/vi/06_trigger.sql` và `sql/vi/05_transaction.sql` (có ROLLBACK).
 - Đề xuất thêm khía cạnh bảo mật (phân quyền GRANT/REVOKE theo vai trò, kiểm tra rủi ro injection trong các câu query) - có thể tính là phần mở rộng cho báo cáo.
 
 **Chung cả nhóm:**
@@ -95,13 +95,13 @@ dbi202-assignment/
 
 1. Clone repo và cài **SQL Server** (Developer/Express edition) + **SQL Server Management Studio (SSMS)**.
 2. Chạy lần lượt các file `.sql` trong `sql/` theo đúng thứ tự phụ thuộc (mở bằng SSMS, kết nối tới instance local, rồi Execute):
-   1. `sql/trung/createDB.sql` — tạo database `Group7` và các bảng.
-   2. `sql/trung/insert.sql` — nạp dữ liệu mẫu (khi Trung đã tách xong từ `sql/quantl3/G7_Dbscript.sql`).
-   3. `sql/vi/constraints.sql` — thêm các ràng buộc.
-   4. `sql/vi/transaction.sql`, `sql/vi/trigger.sql` — transaction và trigger.
-   5. `sql/trung/procedure.sql` — stored procedure.
-   6. `sql/hoang/queries.sql` — chạy thử các câu query.
-3. Nếu chỉ cần restore nhanh từ dữ liệu gốc: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database `Group7` đầy đủ dữ liệu, sau đó chạy tiếp `constraints.sql` → `trigger.sql` → `procedure.sql` để bổ sung các phần còn thiếu.
+   1. `sql/trung/01_createDB.sql` — tạo database `Group7` và các bảng.
+   2. `sql/trung/03_insert.sql` — nạp dữ liệu mẫu (khi Trung đã tách xong từ `sql/quantl3/G7_Dbscript.sql`).
+   3. `sql/vi/02_constraints.sql` — thêm các ràng buộc.
+   4. `sql/vi/05_transaction.sql`, `sql/vi/06_trigger.sql` — transaction và trigger.
+   5. `sql/trung/07_procedure.sql` — stored procedure.
+   6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
+3. Nếu chỉ cần restore nhanh từ dữ liệu gốc: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database `Group7` đầy đủ dữ liệu, sau đó chạy tiếp `02_constraints.sql` → `06_trigger.sql` → `07_procedure.sql` để bổ sung các phần còn thiếu.
 4. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
 5. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
 
