@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>DBI202 - Group7 Video Game Sales Demo</title>
+</head>
+<body>
+  <h1>Top game theo doanh so (Group7)</h1>
+  <table border="1" cellpadding="6">
+    <tr>
+      <th>Game</th>
+      <th>Tong doanh so</th>
+      <th>Goi y game tuong tu</th>
+    </tr>
+    {% for g in games %}
+    <tr>
+      <td>{{ g.game_name }}</td>
+      <td>{{ "%.2f"|format(g.total_sales) }}</td>
+      <td><a href="/recommend/{{ g.game_id }}">Xem goi y</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

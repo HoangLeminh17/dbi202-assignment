@@ -36,9 +36,13 @@ dbi202-assignment/
 ├── material/                # Bản nộp cuối cùng
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
-└── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
-    ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)
-    └── requirements.txt     # Thu vien Python can cai (pyodbc, pandas, scikit-learn)
+├── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
+│   ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)
+│   └── requirements.txt     # Thu vien Python can cai (pyodbc, pandas, scikit-learn)
+└── web/                     # Web demo noi AI + SQL lai voi nhau (Trung code/dev)
+    ├── app.py               # Flask app: trang danh sach game + trang goi y (goi ai/recommend.py)
+    ├── templates/           # index.html, recommend.html
+    └── requirements.txt     # Thu vien Python can cai (flask, pyodbc, pandas, scikit-learn)
 ```
 
 ## Yêu cầu đề bài (tổng hợp từ `yeu-cau-assignment/Assignment1.docx` và `yeu-cau-assignment/Assignment2.docx`)
@@ -84,6 +88,7 @@ dbi202-assignment/
 - Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
 - Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
 - Viết `sql/trung/07_procedure.sql`.
+- Code/dev web demo trong `web/` (`web/app.py`): nối CSDL (`sql/`) và phần AI (`ai/recommend.py`) lại với nhau thành 1 demo end-to-end (trang danh sách game + trang gợi ý), có thể bổ sung thêm route CRUD gọi stored procedure.
 - Hỗ trợ phần cài đặt vật lý trong báo cáo.
 
 **Vi (IS):**
@@ -106,8 +111,16 @@ dbi202-assignment/
    5. `sql/trung/07_procedure.sql` — stored procedure.
    6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
 3. Nếu chỉ cần restore nhanh từ dữ liệu gốc: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database `Group7` đầy đủ dữ liệu, sau đó chạy tiếp `02_constraints.sql` → `06_trigger.sql` → `07_procedure.sql` để bổ sung các phần còn thiếu.
-4. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
-5. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
+4. Chạy phần AI/web demo (sau khi database đã có dữ liệu):
+   ```
+   pip install -r ai/requirements.txt
+   pip install -r web/requirements.txt
+   python ai/recommend.py --game-id 1 --top-n 5   # test nhanh phan AI
+   python web/app.py                              # chay web demo tai http://127.0.0.1:5000
+   ```
+   Nếu SQL Server không chạy ở `localhost` mặc định, sửa `CONNECTION_STRING` trong `ai/recommend.py` cho đúng.
+5. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
+6. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
 
 ## Nộp bài
 
