@@ -98,7 +98,6 @@ PAGE = """
          border-bottom-left-radius: 3px; }
   .bot.blocked { border-color: #f0b429; background: #fffbea; }
   .bot.error { border-color: #e5b8a8; background: #fff4ef; }
-  .bot .icon { font-size: 16px; margin-right: 4px; }
   .bot .sql { margin-top: 8px; font-family: Consolas, monospace; font-size: 12.5px;
               background: #f2f2f4; padding: 8px; border-radius: 6px; overflow-x: auto; }
   .bot .meta { font-size: 11px; color: #888; margin-top: 6px; }
@@ -123,7 +122,7 @@ PAGE = """
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">🦫 NL2SQL Agent</div>
+    <div class="brand">NL2SQL Agent</div>
     <button class="new-chat-btn" id="newChatBtn">+ Đoạn chat mới</button>
     <div class="history-label">Lịch sử</div>
     <div class="history-list" id="historyList"></div>
@@ -215,11 +214,7 @@ function renderSidebar() {
 function renderMsg(m) {
   const div = document.createElement('div');
   div.className = 'msg ' + (m.role === 'user' ? 'user' : ('bot' + (m.error ? ' error' : (m.blocked ? ' blocked' : ''))));
-  if (m.role === 'bot' && m.error) {
-    div.innerHTML = '<span class="icon">🦫</span>' + escapeHtml(m.text);
-  } else {
-    div.textContent = m.text;
-  }
+  div.textContent = m.text;
   if (m.sql) {
     const pre = document.createElement('div');
     pre.className = 'sql';
@@ -233,12 +228,6 @@ function renderMsg(m) {
     div.appendChild(meta);
   }
   chatEl.appendChild(div);
-}
-
-function escapeHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
 }
 
 function renderChat() {
@@ -274,9 +263,14 @@ async function ask(question) {
 
   const pending = document.createElement('div');
   pending.className = 'msg bot';
-  pending.textContent = 'Đang xử lý...';
+  pending.textContent = 'Đang xử lý... (0s)';
   chatEl.appendChild(pending);
   chatEl.scrollTop = chatEl.scrollHeight;
+
+  const startedAt = Date.now();
+  const tick = setInterval(() => {
+    pending.textContent = 'Đang xử lý... (' + Math.floor((Date.now() - startedAt) / 1000) + 's)';
+  }, 1000);
 
   let botMsg;
   try {
@@ -288,15 +282,17 @@ async function ask(question) {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     if (data.error) {
-      botMsg = { role: 'bot', error: true, text: '🦫 Dịch vụ hiện đang bảo trì, vui lòng thử lại sau.' };
+      botMsg = { role: 'bot', error: true, text: data.reason };
     } else if (data.blocked) {
       botMsg = { role: 'bot', blocked: true, text: '[BỊ CHẶN] ' + data.reason };
     } else {
       botMsg = { role: 'bot', text: data.answer, sql: data.sql, rowCount: data.row_count };
     }
   } catch (e) {
-    botMsg = { role: 'bot', error: true, text: '🦫 Dịch vụ hiện đang bảo trì, vui lòng thử lại sau.' };
+    // Fetch tu no fail nghia la khong ket noi duoc toi server (server sap/mat mang)
+    botMsg = { role: 'bot', error: true, text: 'Mất kết nối tới server, vui lòng thử lại sau.' };
   }
+  clearInterval(tick);
   pending.remove();
   pushMsg(botMsg);
   renderMsg(botMsg);
@@ -337,7 +333,8 @@ def ask():
     try:
         result = agent.ask(question)
     except Exception as exc:  # phong thu cuoi cung, khong de request treo/500
-        return jsonify({"error": True, "reason": str(exc)})
+        category = agent._categorize_error(exc)
+        return jsonify({"error": True, "reason": agent.ERROR_CATEGORY_MESSAGES[category]})
 
     return jsonify(
         {
@@ -460,20 +457,33 @@ ADMIN_PAGE = """
 """
 
 
-# Thu tu + mau co dinh (bang mau categorical/status da validate, tranh cap
-# cam/vang bi canh bao fail o che do all-pairs - xem NL2SQL_ARCHITECTURE.md).
+# 3 nhom - dung dung bo mau status (good/warning/critical) theo dataviz
+# skill: da chay validate_palette.js voi 6 mau tach rieng tung block_stage,
+# KHONG mau nao qua duoc kiem tra all-pairs (chinh tai lieu skill xac nhan
+# qua 3 slot categorical la het an toan) - nen gop lai con 3 nhom co y nghia
+# ro rang, dung dung role "status" (luon di kem nhan chu + so luong trong
+# legend, day la bien phap giam thieu chinh thuc cho mau status theo skill,
+# khong phai boi vi status duoc mien kiem tra CVD). Chi tiet tung loai chan
+# (injection/ngoai pham vi/SQL loi/hallucination) van xem day du o bang log.
 STATUS_META = [
-    ("ok", "Thành công", "#008300"),
-    ("input_guardrail", "Chặn injection (input)", "#2a78d6"),
-    ("llm_not_applicable", "Ngoài phạm vi (LLM tự chặn)", "#eb6834"),
-    ("sql_validator", "SQL không hợp lệ", "#1baf7a"),
-    ("output_guardrail", "Chặn hallucination (output)", "#4a3aa7"),
-    ("service_error", "Lỗi hạ tầng (timeout/mất kết nối)", "#e34948"),
+    ("ok", "Thành công", "#0ca30c"),
+    ("blocked_by_design", "Bị chặn theo thiết kế (guardrail/validator)", "#fab219"),
+    ("service_error", "Lỗi hạ tầng (timeout/mất kết nối)", "#d03b3b"),
 ]
+
+_BLOCKED_BY_DESIGN = {
+    "input_guardrail", "llm_not_applicable", "sql_validator", "output_guardrail",
+}
 
 
 def _build_donut():
-    counts = {r["status"]: r["count"] for r in logging_store.fetch_status_breakdown()}
+    raw_counts = {r["status"]: r["count"] for r in logging_store.fetch_status_breakdown()}
+    counts = {"ok": 0, "blocked_by_design": 0, "service_error": 0}
+    for status, n in raw_counts.items():
+        if status in _BLOCKED_BY_DESIGN:
+            counts["blocked_by_design"] += n
+        elif status in counts:
+            counts[status] += n
     total = sum(counts.values())
 
     slices = []

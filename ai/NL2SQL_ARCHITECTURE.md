@@ -145,6 +145,19 @@ code, mô tả để tham khảo khi mở rộng):
   (đo được qua cột "DB exec" trên `/admin`) do bắt tay với named instance qua
   SQL Browser không ổn định - sửa bằng cách tái sử dụng 1 connection cho cả
   tiến trình, giảm còn ~vài chục-vài trăm ms.
+- **Biểu đồ tròn (donut, CSS conic-gradient)** trên `/admin` thể hiện tỷ lệ 3
+  nhóm trạng thái: Thành công / Bị chặn theo thiết kế (gộp cả 4 loại guardrail
+  và validator) / Lỗi hạ tầng - tự làm mới mỗi 45s. Ban đầu thử tách riêng
+  từng loại chặn thành 6 màu, nhưng chạy `validate_palette.js` (skill
+  `dataviz`) cho thấy không tổ hợp 6 màu nào trong bảng màu categorical vượt
+  qua kiểm tra all-pairs (đúng như tài liệu skill cảnh báo: quá 3 màu là hết
+  an toàn) - nên gộp còn 3 nhóm dùng đúng bộ màu status (good/warning/
+  critical), luôn kèm nhãn chữ trong legend. Chi tiết từng loại chặn cụ thể
+  vẫn xem đầy đủ ở bảng log.
+- **Lỗi hạ tầng hiện cho user theo nhóm** (timeout / mất kết nối / lỗi xác
+  thực / không rõ nguyên nhân - `agent._categorize_error`), không lộ chi tiết
+  exception/stack trace ra giao diện; chi tiết thật vẫn được ghi đầy đủ vào
+  `logs.db` để admin debug qua `/admin`.
 
 **Chưa cài đặt (hướng phát triển)** - đầy đủ hơn cho production cần 3 nhóm:
 

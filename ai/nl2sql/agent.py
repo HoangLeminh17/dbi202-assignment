@@ -28,10 +28,26 @@ from .sql_validator import SQLValidationError, validate_and_enforce_limit
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 logger = logging.getLogger("nl2sql")
 
-MAINTENANCE_MESSAGE = (
-    "Dịch vụ hiện đang bảo trì (không kết nối được LLM hoặc database), "
-    "vui lòng thử lại sau."
-)
+# Gom loi ha tang thanh nhom de hien cho user (khong lo chi tiet ky thuat/
+# stack trace ra ngoai) - chi tiet that (str(exc)) van duoc ghi vao logs.db
+# de admin xem qua /admin.
+ERROR_CATEGORY_MESSAGES = {
+    "timeout": "Hệ thống xử lý quá lâu (LLM hoặc database phản hồi chậm), vui lòng thử lại.",
+    "connection": "Mất kết nối tới server (LLM hoặc database), vui lòng thử lại sau.",
+    "auth": "Lỗi xác thực với dịch vụ AI, vui lòng báo admin kiểm tra cấu hình API key.",
+    "unknown": "Dịch vụ hiện đang bảo trì, vui lòng thử lại sau.",
+}
+
+
+def _categorize_error(exc: Exception) -> str:
+    text = f"{type(exc).__name__} {exc}".lower()
+    if "timeout" in text or "timed out" in text:
+        return "timeout"
+    if any(k in text for k in ("connection", "connect", "network", "refused", "resolve")):
+        return "connection"
+    if any(k in text for k in ("auth", "api key", "unauthorized", "401", "403", "permission")):
+        return "auth"
+    return "unknown"
 
 
 @dataclass
@@ -120,9 +136,10 @@ def ask(question: str) -> AgentResult:
         ms_explain = int(_now_ms() - t0)
     except Exception as exc:  # timeout, mất mạng, DB lỗi, provider API lỗi...
         logger.exception("Lỗi hạ tầng khi xử lý câu hỏi")
+        category = _categorize_error(exc)
         result.error = True
-        result.reason = f"{MAINTENANCE_MESSAGE} (chi tiết: {exc})"
-        _save(True, "service_error", str(exc))
+        result.reason = ERROR_CATEGORY_MESSAGES[category]
+        _save(True, "service_error", f"{category}: {exc}")
         return result
 
     flat_values = [v for row in rows for v in row]
