@@ -29,6 +29,31 @@ SYSTEM_PROMPT = (
 # few-shot examples se thay tiet kiem ro hon.
 SQL_SYSTEM_PROMPT = f"{SYSTEM_PROMPT}\n\n{build_prompt_context()}"
 
+# Knowledge Cutoff - moc kien thuc huan luyen cua LLM (KHAC voi do moi du lieu
+# Group7 - xem db.get_data_freshness()). Chi mang tinh tham khao: agent nay
+# tra loi dua tren KET QUA SQL truy van thuc te (grounding check trong
+# guardrails.py), khong dua vao "tri nho" huan luyen cua model de bia so lieu
+# game - nen cutoff it anh huong do chinh xac cau tra loi, chi de admin doi
+# chieu/audit. Chua xac dinh chinh xac cho OpenAI/Gemini (khong du du lieu
+# dang tin cay tai thoi diem code) - de trong thay vi doan bua.
+KNOWLEDGE_CUTOFF = {
+    "claude-sonnet-5": "01/2026 (theo thông tin công khai của Anthropic)",
+    "claude-opus-5": "01/2026 (theo thông tin công khai của Anthropic)",
+    "claude-haiku-4-5": "01/2026 (theo thông tin công khai của Anthropic)",
+    "claude-fable-5": "01/2026 (theo thông tin công khai của Anthropic)",
+}
+
+
+def get_model_info() -> dict:
+    """Model + Knowledge Cutoff dang dung - hien o /admin (Data & Model Info)."""
+    provider = CONFIG.llm_provider.lower()
+    model = getattr(CONFIG, f"{provider}_model", "")
+    return {
+        "provider": provider,
+        "model": model,
+        "knowledge_cutoff": KNOWLEDGE_CUTOFF.get(model, "Chưa xác định"),
+    }
+
 
 def _generate_anthropic(system, user: str) -> tuple:
     import anthropic

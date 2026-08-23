@@ -9,7 +9,7 @@ import functools
 
 from flask import Flask, Response, jsonify, render_template_string, request
 
-from . import agent, logging_store
+from . import agent, db, llm_client, logging_store
 from .config import CONFIG
 
 app = Flask(__name__)
@@ -153,7 +153,7 @@ PAGE = """
 
   <main class="main">
     <div class="topbar">
-      <h1>Group7 Video Game Sales <span class="sub">- demo nội bộ, không public</span></h1>
+      <h1>Group7 Video Game Sales <span class="sub">- demo nội bộ, không public{{ (' · ' + freshness_note) if freshness_note else '' }}</span></h1>
     </div>
     <div class="examples">
       Ví dụ:
@@ -550,7 +550,15 @@ if (!store.order.length) { newSession(); } else { renderSidebar(); renderChat();
 
 @app.route("/")
 def index():
-    return render_template_string(PAGE)
+    # Data Freshness cho user - chi can biet du lieu moi toi dau, khong can
+    # provenance/lineage (nhung thu do chi admin can qua /admin).
+    try:
+        fresh = db.get_data_freshness()
+        freshness_note = f"Dữ liệu cập nhật đến năm {fresh['max_release_year']}"
+    except Exception:
+        agent.logger.exception("Không lấy được data freshness cho trang chủ")
+        freshness_note = None  # DB chua san sang - khong chan trang chat vi ly do nay
+    return render_template_string(PAGE, freshness_note=freshness_note)
 
 
 @app.route("/ask", methods=["POST"])
@@ -618,6 +626,12 @@ ADMIN_PAGE = """
   .badge.ok { background: #e6f4ea; color: #1a7f37; }
   .badge.blocked { background: #fdecea; color: #b3261e; }
   .toolbar { margin-bottom: 12px; font-size: 13px; }
+  .gov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .gov-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; }
+  .gov-card h3 { font-size: 12px; margin: 0 0 6px; color: #52514e; text-transform: uppercase; letter-spacing: .03em; }
+  .gov-card p { margin: 0 0 4px; }
+  .gov-card ol { margin: 4px 0 0; padding-left: 16px; }
+  .gov-card ol li { margin-bottom: 3px; }
 </style>
 </head>
 <body>
@@ -650,6 +664,39 @@ ADMIN_PAGE = """
       </div>
     </div>
   </div>
+
+  <div class="gov-grid">
+    <div class="gov-card">
+      <h3>Knowledge Cutoff</h3>
+      <p>Model: <strong>{{ model_info.provider }}/{{ model_info.model }}</strong></p>
+      <p>Mốc kiến thức huấn luyện: {{ model_info.knowledge_cutoff }}</p>
+      <p style="color:#898781;">Chỉ tham khảo/audit - câu trả lời dựa trên kết
+      quả SQL thật (grounding check), không dựa trí nhớ huấn luyện của model.</p>
+    </div>
+    <div class="gov-card">
+      <h3>Data Freshness</h3>
+      <p>Dữ liệu game cập nhật đến năm: <strong>{{ freshness.max_release_year }}</strong></p>
+      <p>Tổng số dòng doanh số: {{ freshness.total_rows }}</p>
+      <p>Lần cuối bảng region_sales bị ghi/đổi (STATS_DATE): {{ freshness.stats_date }}</p>
+    </div>
+    <div class="gov-card">
+      <h3>Data Provenance</h3>
+      <p>Dataset gốc: Video Game Sales.</p>
+      <p>Nạp qua sql/quantl3/G7_Dbscript.sql (Contributor: quantl3@fpt.edu.vn).</p>
+      <p>Ràng buộc bởi Vi (sql/vi/), index + view NL2SQL bởi Hoàng (sql/hoang/).</p>
+    </div>
+    <div class="gov-card">
+      <h3>Data Lineage</h3>
+      <ol>
+        <li>G7_Dbscript.sql - tạo bảng + insert thô</li>
+        <li>02_constraints.sql - ràng buộc dữ liệu</li>
+        <li>09_indexes.sql - index tăng tốc</li>
+        <li>08_nl2sql_view.sql - view vw_game_sales_full</li>
+        <li>NL2SQL Agent đọc view → LLM → trả lời</li>
+      </ol>
+    </div>
+  </div>
+
   <table>
     <thead>
       <tr>
@@ -743,6 +790,10 @@ def admin():
     logs = logging_store.fetch_recent(limit=200)
     stats = logging_store.fetch_stats()
     donut_slices, donut_gradient, donut_total = _build_donut()
+    try:
+        freshness = db.get_data_freshness()
+    except Exception as exc:
+        freshness = {"max_release_year": "?", "total_rows": "?", "stats_date": f"lỗi: {exc}"}
     return render_template_string(
         ADMIN_PAGE,
         logs=logs,
@@ -750,6 +801,8 @@ def admin():
         donut_slices=donut_slices,
         donut_gradient=donut_gradient,
         donut_total=donut_total,
+        model_info=llm_client.get_model_info(),
+        freshness=freshness,
     )
 
 

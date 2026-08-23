@@ -93,3 +93,39 @@ def execute_select(sql: str):
         columns = [c[0] for c in cursor.description]
         rows = [tuple(row) for row in cursor.fetchall()]
         return columns, rows
+
+
+def get_data_freshness() -> dict:
+    """Độ mới dữ liệu (Data Freshness) - dùng cho cả /admin và trang chat.
+
+    - max_release_year: năm phát hành mới nhất có trong dữ liệu (nội dung
+      "mới" tới đâu - dataset video game sales không có cột created_at nên
+      đây là proxy hợp lý nhất cho "dữ liệu update tới đâu").
+    - stats_date: SQL Server tự cập nhật timestamp này khi dữ liệu 1 bảng
+      thay đổi đủ nhiều (INSERT/UPDATE/DELETE) - proxy kỹ thuật cho "lần
+      cuối dữ liệu trong region_sales bị ghi/thay đổi".
+    - total_rows: tổng số dòng doanh số hiện có, để đối chiếu tính đầy đủ.
+    """
+    with _lock:
+        conn = _get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT MAX(release_year), COUNT(*) FROM vw_game_sales_full"
+        )
+        max_year, total_rows = cur.fetchone()
+
+        cur.execute(
+            """
+            SELECT MAX(STATS_DATE(s.object_id, s.stats_id))
+            FROM sys.stats s
+            JOIN sys.tables t ON t.object_id = s.object_id
+            WHERE t.name = 'region_sales'
+            """
+        )
+        stats_date = cur.fetchone()[0]
+
+        return {
+            "max_release_year": max_year,
+            "total_rows": total_rows,
+            "stats_date": stats_date,
+        }
