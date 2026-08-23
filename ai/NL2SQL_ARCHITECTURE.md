@@ -39,9 +39,20 @@ Không cho LLM đọc raw DB trực tiếp:
 
 - **Schema-as-context**: đưa mô tả schema rút gọn (tên cột, kiểu, ý nghĩa 1 dòng)
   vào prompt thay vì cả file Markdown dài - xem `SCHEMA_CONTEXT` trong `schema.py`.
-- **Few-shot SQL examples**: 5 cặp (câu hỏi NL - SQL đúng) cho các dạng truy vấn
-  phổ biến (top N, group by, trend theo năm) - `FEW_SHOT_EXAMPLES` trong
-  `schema.py`, giúp LLM bắt đúng pattern JOIN qua 2 tầng trung gian.
+- **Few-shot SQL examples**: 10 cặp (câu hỏi NL - SQL đúng) cho các dạng truy vấn
+  phổ biến (top N, group by, trend theo năm, window function, so sánh nhiều
+  platform...) - `FEW_SHOT_EXAMPLES` trong `schema.py`, giúp LLM bắt đúng
+  pattern JOIN qua 2 tầng trung gian.
+- **Prompt caching** (`llm_client.py`, provider Claude): schema-as-context +
+  few-shot ở trên được gộp vào block `system` của `generate_sql()`, đánh dấu
+  `cache_control: ephemeral` - nội dung này giống hệt mọi lần gọi nên Claude
+  cache lại được, giảm ~90% chi phí phần đó từ lần gọi thứ 2 trở đi (đã test
+  thật: lần 1 `cache_creation_input_tokens=1501`, lần 2-3
+  `cache_read_input_tokens=1501`). Anthropic yêu cầu prefix ≥ ~1024 token mới
+  cache được - lý do mở rộng từ 5 lên 10 few-shot examples (5 ví dụ ban đầu
+  chỉ ~980 token, dưới ngưỡng, cache không kích hoạt). OpenAI tự cache prefix
+  dài phía server không cần code thêm; Gemini cần API `CachedContent` riêng,
+  chưa cài (ngoài phạm vi, provider mặc định là Claude).
 - **Semantic layer / view**: [`sql/hoang/08_nl2sql_view.sql`](../sql/hoang/08_nl2sql_view.sql)
   tạo view `vw_game_sales_full` gộp sẵn `game + genre + publisher + platform +
   region_sales`, vừa giảm khả năng LLM sinh sai JOIN, vừa "che" các cột id kỹ
@@ -185,7 +196,8 @@ code, mô tả để tham khảo khi mở rộng):
 | Hạng mục | Trạng thái |
 |---|---|
 | Pipeline NL2SQL end-to-end (guardrail → SQL → DB → trả lời) | Đã cài đặt (`ai/nl2sql/`) |
-| Schema-as-context + few-shot | Đã cài đặt (`schema.py`) |
+| Schema-as-context + few-shot (10 ví dụ) | Đã cài đặt (`schema.py`) |
+| Prompt caching (Claude) | Đã cài đặt (`llm_client.py`) |
 | Semantic view whitelist | Đã cài đặt (`sql/hoang/08_nl2sql_view.sql`) |
 | SQL Validator (AST, whitelist, auto-limit) | Đã cài đặt (`sql_validator.py`) |
 | Guardrail input (injection filter + domain check qua LLM) | Đã cài đặt (`guardrails.py` + `llm_client.NOT_APPLICABLE`) |
