@@ -55,7 +55,7 @@ dbi202-assignment/
 │   ├── NL2SQL_ARCHITECTURE.md   # Kiến trúc đầy đủ NL2SQL Agent (copy vào báo cáo mục Áp dụng AI)
 │   ├── .env.example          # Template biến môi trường (API key, DB) - KHÔNG chứa giá trị thật
 │   └── requirements.txt     # Thư viện Python cần cài (pyodbc, pandas, scikit-learn, sqlglot, anthropic...)
-└── web/                     # Web demo nối AI + SQL lại với nhau (Trung code/dev)
+└── web/                     # Web demo nối AI + SQL lại với nhau (Hoàng code/dev)
     ├── app.py               # Flask app: trang danh sách game + trang gợi ý (gọi ai/recommend.py)
     ├── templates/           # index.html, recommend.html
     └── requirements.txt     # Thư viện Python cần cài (flask, pyodbc, pandas, scikit-learn)
@@ -97,7 +97,8 @@ dbi202-assignment/
 **Hoàng (AI, nhóm trưởng):**
 - Chủ trì thiết kế ER và mô hình quan hệ, chuẩn hoá 3NF, data dictionary — xem [`erd-dictionary/ERD.md`](erd-dictionary/ERD.md) và [`erd-dictionary/DataDictionary.md`](erd-dictionary/DataDictionary.md).
 - Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
-- Code/dev phần ứng dụng AI trong `ai/` (`ai/recommend.py`): hoàn thiện, test thử với dữ liệu thật, có thể mở rộng thêm (collaborative filtering theo doanh số vùng, sinh giải thích gợi ý bằng ngôn ngữ tự nhiên...).
+- Code/dev phần ứng dụng AI trong `ai/` (`ai/recommend.py`, `ai/nl2sql/`): hoàn thiện, test thử với dữ liệu thật, có thể mở rộng thêm (collaborative filtering theo doanh số vùng, sinh giải thích gợi ý bằng ngôn ngữ tự nhiên...).
+- Code/dev web demo trong `web/` (`web/app.py`): nối CSDL (`sql/`) và phần AI (`ai/recommend.py`, `ai/nl2sql/`) lại với nhau thành 1 demo end-to-end (trang danh sách game, trang gợi ý, trang chat NL2SQL), có thể bổ sung thêm route CRUD gọi stored procedure.
 - Phần "Áp dụng AI" trong báo cáo + slide.
 - Tổng hợp `slide-report/Report.docx`, làm `slide-report/Slide.pptx`, gửi mail assignment (CC nhóm).
 
@@ -105,7 +106,6 @@ dbi202-assignment/
 - Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
 - Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
 - Viết `sql/trung/07_procedure.sql`.
-- Code/dev web demo trong `web/` (`web/app.py`): nối CSDL (`sql/`) và phần AI (`ai/recommend.py`) lại với nhau thành 1 demo end-to-end (trang danh sách game + trang gợi ý), có thể bổ sung thêm route CRUD gọi stored procedure.
 - Hỗ trợ phần cài đặt vật lý trong báo cáo.
 
 **Vi (IS):**
