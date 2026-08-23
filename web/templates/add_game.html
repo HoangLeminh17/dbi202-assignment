@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Thêm game mới{% endblock %}
+
+{% block content %}
+<a href="/games" class="back-link animate-in">← Quay lại danh sách</a>
+
+<div class="page-header animate-in">
+  <h1>➕ Thêm game mới</h1>
+  <p>Thêm game vào cơ sở dữ liệu thông qua stored procedure <code>sp_AddNewGame</code></p>
+</div>
+
+<form class="form-card animate-in" method="post" action="/add">
+  <div class="form-group">
+    <label for="game_name">Tên game *</label>
+    <input type="text" id="game_name" name="game_name" required
+           placeholder="Ví dụ: The Legend of Zelda">
+  </div>
+
+  <div class="form-group">
+    <label for="genre_id">Thể loại *</label>
+    <select id="genre_id" name="genre_id" required>
+      <option value="">-- Chọn thể loại --</option>
+      {% for g in genres %}
+      <option value="{{ g.id }}">{{ g.genre_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="publisher_id">Nhà phát hành *</label>
+    <select id="publisher_id" name="publisher_id" required>
+      <option value="">-- Chọn nhà phát hành --</option>
+      {% for p in publishers %}
+      <option value="{{ p.id }}">{{ p.publisher_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="platform_id">Nền tảng *</label>
+    <select id="platform_id" name="platform_id" required>
+      <option value="">-- Chọn nền tảng --</option>
+      {% for p in platforms %}
+      <option value="{{ p.id }}">{{ p.platform_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="release_year">Năm phát hành</label>
+    <input type="number" id="release_year" name="release_year"
+           min="1970" max="2100" placeholder="Ví dụ: 2024">
+  </div>
+
+  <div class="form-group">
+    <label for="region_id">Khu vực (để ghi doanh số ban đầu)</label>
+    <select id="region_id" name="region_id">
+      <option value="">-- Không ghi doanh số --</option>
+      {% for r in regions %}
+      <option value="{{ r.id }}">{{ r.region_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="num_sales">Doanh số ban đầu (triệu bản)</label>
+    <input type="number" id="num_sales" name="num_sales" step="0.01" min="0" max="999.99"
+           placeholder="Ví dụ: 1.50">
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">💾 Thêm game</button>
+    <a href="/games" class="btn btn-secondary">Huỷ</a>
+  </div>
+</form>
+{% endblock %}

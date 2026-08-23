@@ -1,25 +1,65 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>Goi y game tuong tu - game_id {{ game_id }}</title>
-</head>
-<body>
-  <p><a href="/">&larr; Quay lai danh sach</a></p>
-  <h1>Goi y game tuong tu voi game_id = {{ game_id }}</h1>
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>Game</th>
-      <th>Do tuong dong (similarity)</th>
-      <th>Tong doanh so</th>
-    </tr>
-    {% for r in recommendations %}
-    <tr>
-      <td>{{ r.game_name }}</td>
-      <td>{{ "%.3f"|format(r.similarity) }}</td>
-      <td>{{ "%.2f"|format(r.total_sales) }}</td>
-    </tr>
-    {% endfor %}
+{% extends "base.html" %}
+{% block title %}Gợi ý AI — {{ source_game }}{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link animate-in">← Quay lại Dashboard</a>
+
+<div class="page-header animate-in">
+  <h1>🤖 Gợi ý game tương tự</h1>
+  <p>Dựa trên thể loại, nhà phát hành, nền tảng — Content-based filtering (scikit-learn)</p>
+</div>
+
+<div class="card animate-in" style="margin-bottom: 1.5rem; padding: 1rem 1.5rem;">
+  <p style="color: var(--text-secondary); font-size: 0.9rem;">
+    Game gốc:
+    <a href="/game/{{ game_id }}" style="font-weight: 700; color: var(--accent-tertiary); font-size: 1.05rem;">
+      {{ source_game }}
+    </a>
+    (game_id = {{ game_id }})
+  </p>
+</div>
+
+{% if recommendations|length > 0 %}
+<div class="table-wrapper animate-in">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tên game</th>
+        <th>Độ tương đồng</th>
+        <th>Doanh số (triệu)</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recommendations %}
+      <tr>
+        <td style="color: var(--text-muted);">{{ loop.index }}</td>
+        <td>
+          <a href="/game/{{ r.game_id }}" style="color: var(--text-primary); font-weight: 600;">{{ r.game_name }}</a>
+        </td>
+        <td>
+          <div class="similarity-bar">
+            <div class="similarity-track">
+              <div class="similarity-fill" style="width: {{ (r.similarity * 100)|round|int }}%"></div>
+            </div>
+            <span class="similarity-value">{{ "%.1f"|format(r.similarity * 100) }}%</span>
+          </div>
+        </td>
+        <td><span class="badge badge-sales">{{ "%.2f"|format(r.total_sales) }}</span></td>
+        <td>
+          <a href="/recommend/{{ r.game_id }}" class="btn btn-secondary btn-sm">🤖 Gợi ý tiếp</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
-</body>
-</html>
+</div>
+{% else %}
+<div class="empty-state animate-in">
+  <div class="empty-icon">🤷</div>
+  <h3>Không tìm thấy gợi ý</h3>
+  <p>Game này có thể không có đủ dữ liệu để tìm game tương tự</p>
+</div>
+{% endif %}
+{% endblock %}

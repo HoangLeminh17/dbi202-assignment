@@ -1,24 +1,63 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <title>DBI202 - Group7 Video Game Sales Demo</title>
-</head>
-<body>
-  <h1>Top game theo doanh so (Group7)</h1>
-  <table border="1" cellpadding="6">
-    <tr>
-      <th>Game</th>
-      <th>Tong doanh so</th>
-      <th>Goi y game tuong tu</th>
-    </tr>
-    {% for g in games %}
-    <tr>
-      <td>{{ g.game_name }}</td>
-      <td>{{ "%.2f"|format(g.total_sales) }}</td>
-      <td><a href="/recommend/{{ g.game_id }}">Xem goi y</a></td>
-    </tr>
-    {% endfor %}
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header animate-in">
+  <h1>📊 Video Game Sales Dashboard</h1>
+  <p>Thống kê doanh số game theo khu vực, nền tảng, nhà phát hành — DBI202 Group 7</p>
+</div>
+
+<div class="stats-row animate-in">
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_games }}</div>
+    <div class="stat-label">Tổng game</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_publishers }}</div>
+    <div class="stat-label">Nhà phát hành</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.total_platforms }}</div>
+    <div class="stat-label">Nền tảng</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ "%.1f"|format(stats.total_sales) }}M</div>
+    <div class="stat-label">Tổng doanh số</div>
+  </div>
+</div>
+
+<div class="page-header animate-in">
+  <h2 style="font-size:1.3rem; color: var(--text-primary);">🏆 Top 20 game bán chạy nhất</h2>
+</div>
+
+<div class="table-wrapper animate-in">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tên game</th>
+        <th>Thể loại</th>
+        <th>Nhà phát hành</th>
+        <th>Doanh số (triệu)</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in games %}
+      <tr>
+        <td style="color: var(--text-muted);">{{ loop.index }}</td>
+        <td>
+          <a href="/game/{{ g.game_id }}" style="color: var(--text-primary); font-weight: 600;">{{ g.game_name }}</a>
+        </td>
+        <td><span class="badge badge-genre">{{ g.genre_name or '—' }}</span></td>
+        <td><span class="badge badge-publisher">{{ g.publisher_name or '—' }}</span></td>
+        <td><span class="badge badge-sales">{{ "%.2f"|format(g.total_sales) }}</span></td>
+        <td>
+          <a href="/recommend/{{ g.game_id }}" class="btn btn-secondary btn-sm" title="Gợi ý game tương tự">🤖 Gợi ý AI</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
-</body>
-</html>
+</div>
+{% endblock %}
