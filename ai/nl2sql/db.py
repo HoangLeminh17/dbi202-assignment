@@ -5,7 +5,7 @@ login qua DB_READONLY_USER/PASSWORD trong .env nếu môi trường đã bật S
 Server mixed-mode auth), mọi câu SELECT đã qua sql_validator đều được chạy
 dưới danh nghĩa user hạn chế `nl2sql_readonly` (EXECUTE AS - xem
 execute_select()) - user này chỉ được GRANT SELECT trên vw_game_sales_full,
-KHÔNG có quyền gì trên 8 bảng gốc (sql/hoang/10_readonly_login.sql, tạo bằng
+KHÔNG có quyền gì trên 8 bảng gốc (sql/hoang/10_readonly_user.sql, tạo bằng
 CREATE USER ... WITHOUT LOGIN nên không cần mixed-mode auth). Đây là lớp
 phòng thủ ở tầng DB, độc lập với whitelist bảng ở app-layer
 (sql_validator.py) - nếu lớp app-layer có lỗ hổng bypass, DB vẫn tự chặn.
@@ -96,7 +96,7 @@ def execute_select(sql: str):
     chung không an toàn cho nhiều thread gọi execute() đồng thời.
 
     Bọc câu query trong EXECUTE AS USER = 'nl2sql_readonly' ... REVERT (defense
-    in depth ở tầng DB - xem sql/hoang/10_readonly_login.sql): user này chỉ
+    in depth ở tầng DB - xem sql/hoang/10_readonly_user.sql): user này chỉ
     được GRANT SELECT trên vw_game_sales_full, không có quyền gì trên 8 bảng
     gốc, nên nếu sql_validator.py có lỗ hổng bypass nào đó thì DB vẫn tự chặn.
     REVERT luôn chạy trong finally để connection tái sử dụng không bị "kẹt"

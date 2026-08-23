@@ -101,7 +101,7 @@ nhất):
 - `QUERY_TIMEOUT_SECONDS` (30s) đã benchmark thật (xem "Bug thật thứ 3" ở mục
   7) - 10s ban đầu quá ngắn so với thời gian chờ memory grant thực tế của SQL
   Server Express khi máy bị áp lực RAM.
-- **Defense-in-depth ở lớp DB** (`sql/hoang/10_readonly_login.sql`): database
+- **Defense-in-depth ở lớp DB** (`sql/hoang/10_readonly_user.sql`): database
   user `nl2sql_readonly` (tạo bằng `CREATE USER ... WITHOUT LOGIN` - không cần
   bật SQL Server mixed-mode auth) chỉ được `GRANT SELECT` trên
   `vw_game_sales_full`, không có quyền gì trên 8 bảng gốc. `db.py` bọc mọi
