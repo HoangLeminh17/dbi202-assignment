@@ -24,7 +24,9 @@
     <line x1="870" y1="960" x2="870" y2="1008"/>
     <line x1="870" y1="1092" x2="870" y2="1150"/>
     <!-- Sold_in - num_sales attribute -->
-    <line x1="960" y1="1050" x2="1115" y2="1040"/>
+    <line x1="918" y1="1050" x2="1145" y2="1040"/>
+    <!-- Sold_in - updated_at attribute -->
+    <line x1="918" y1="1050" x2="1145" y2="1140"/>
   </g>
 
   <!-- ============ ATTRIBUTE - ENTITY connector lines (mau nhat) ============ -->
@@ -175,9 +177,13 @@
     <text x="915" y="1276" text-anchor="middle" font-size="13" fill="#245a2f">region_name</text>
     <text x="915" y="1293" text-anchor="middle" font-size="10.5" fill="#4a7a52">VARCHAR(50)</text>
 
-    <!-- Sold_in attribute -->
+    <!-- Sold_in attributes -->
     <ellipse cx="1195" cy="1038" rx="85" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
     <text x="1195" y="1034" text-anchor="middle" font-size="13" fill="#245a2f">num_sales</text>
     <text x="1195" y="1051" text-anchor="middle" font-size="10.5" fill="#4a7a52">DECIMAL(5,2)</text>
+
+    <ellipse cx="1195" cy="1140" rx="85" ry="32" fill="#e9f7ea" stroke="#3f8f4f" stroke-width="2"/>
+    <text x="1195" y="1136" text-anchor="middle" font-size="13" fill="#245a2f">updated_at</text>
+    <text x="1195" y="1153" text-anchor="middle" font-size="10.5" fill="#4a7a52">DATETIME</text>
   </g>
 </svg>

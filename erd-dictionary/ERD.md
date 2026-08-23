@@ -19,7 +19,7 @@ File nguồn (vector, chỉnh sửa được): [`erd-dictionary/ERD.svg`](ERD.sv
 | `Platform` | Nền tảng chơi game (PS4, Xbox, PC...) | 1 Platform - N Game_Platform (quan hệ `Hosts`) |
 | `Game_Platform` | Thực thể trung gian: 1 bản phát hành (Game_Publisher) trên 1 Platform, kèm năm phát hành | N-1 với Game_Publisher (`Released_on`), N-1 với Platform (`Hosts`); N-N với Region qua quan hệ `Sold_in` |
 | `Region` | Khu vực địa lý (NA, EU, JP, Other...) | N-N với Game_Platform qua quan hệ `Sold_in` |
-| `Sold_in` | Quan hệ N-N giữa Game_Platform và Region, mang thuộc tính `num_sales` (tương ứng bảng `region_sales` trong mô hình quan hệ) | N Game_Platform - N Region |
+| `Sold_in` | Quan hệ N-N giữa Game_Platform và Region, mang thuộc tính `num_sales` và `updated_at` (tương ứng bảng `region_sales` trong mô hình quan hệ) | N Game_Platform - N Region |
 
 ## Lý do thiết kế 2 bảng trung gian (`game_publisher`, `game_platform`)
 
@@ -41,25 +41,26 @@ Sau khi chuyển mô hình ER sang mô hình quan hệ (relational model), mỗi
 | `game` | game(**id**, genre_id, game_name) | id → genre_id, game_name |
 | `game_publisher` | game_publisher(**id**, game_id, publisher_id) | id → game_id, publisher_id |
 | `game_platform` | game_platform(**id**, game_publisher_id, platform_id, release_year) | id → game_publisher_id, platform_id, release_year |
-| `region_sales` | region_sales(**region_id, game_platform_id**, num_sales) | (region_id, game_platform_id) → num_sales |
+| `region_sales` | region_sales(**region_id, game_platform_id**, num_sales, created_at, updated_at) | (region_id, game_platform_id) → num_sales, created_at, updated_at |
 
-> `region_sales` thực tế có thêm 2 cột kỹ thuật `created_at`/`updated_at`
-> (`sql/hoang/11_freshness_columns.sql`) phục vụ tính năng Data Freshness của
-> NL2SQL Agent - đây là metadata hệ thống (audit trail), không phải thuộc
-> tính nghiệp vụ của quan hệ `Sold_in`, nên cố tình không vẽ trong ERD khái
-> niệm ở trên (chỉ giữ `num_sales`) - chi tiết đầy đủ xem `DataDictionary.md`.
+> `updated_at` (thời điểm dòng dữ liệu bị sửa lần gần nhất) phục vụ tính năng
+> Data Freshness của NL2SQL Agent (`sql/hoang/11_freshness_columns.sql`), tự
+> động cập nhật bằng trigger `trg_region_sales_updated`. `created_at` cũng
+> tồn tại trong bảng thật nhưng không vẽ riêng trong ERD (ít giá trị phân
+> tích hơn `updated_at`, cùng ý nghĩa "audit timestamp") - chi tiết đầy đủ cả
+> 2 cột xem `DataDictionary.md`.
 
 ### Vì sao các bảng đạt chuẩn 3NF
 
 Một lược đồ đạt 3NF khi đã đạt 2NF (không có phụ thuộc bộ phận vào khoá chính) và không tồn tại phụ thuộc bắc cầu (transitive dependency) - tức không có thuộc tính không khoá nào phụ thuộc vào một thuộc tính không khoá khác.
 
 - **Đạt 1NF:** mọi thuộc tính đều mang giá trị nguyên tố (atomic) - không có thuộc tính đa trị hay lặp nhóm.
-- **Đạt 2NF:** 7/8 bảng (`platform`, `genre`, `publisher`, `region`, `game`, `game_publisher`, `game_platform`) có khoá chính là 1 cột (`id`) nên không thể có phụ thuộc bộ phận (partial dependency). Riêng `region_sales` có khoá chính phức hợp `(region_id, game_platform_id)`, nhưng thuộc tính không khoá duy nhất là `num_sales` phụ thuộc đầy đủ vào cả 2 cột của khoá (doanh số chỉ xác định được khi biết cả khu vực lẫn bản phát hành trên platform cụ thể), không phụ thuộc riêng vào `region_id` hay `game_platform_id` → không có phụ thuộc bộ phận.
+- **Đạt 2NF:** 7/8 bảng (`platform`, `genre`, `publisher`, `region`, `game`, `game_publisher`, `game_platform`) có khoá chính là 1 cột (`id`) nên không thể có phụ thuộc bộ phận (partial dependency). Riêng `region_sales` có khoá chính phức hợp `(region_id, game_platform_id)`: `num_sales` phụ thuộc đầy đủ vào cả 2 cột (doanh số chỉ xác định được khi biết cả khu vực lẫn bản phát hành trên platform cụ thể); `created_at`/`updated_at` là mốc thời gian của chính dòng dữ liệu đó nên cũng phụ thuộc đầy đủ vào cả khoá (1 dòng dữ liệu, không tách riêng theo `region_id` hay `game_platform_id`) → không có phụ thuộc bộ phận.
 - **Đạt 3NF:** ở từng bảng, các thuộc tính không khoá chỉ phụ thuộc trực tiếp vào khoá chính, không thuộc tính không khoá nào xác định một thuộc tính không khoá khác:
   - `game`: `genre_id` không xác định `game_name` (2 game khác nhau có thể cùng `genre_id` nhưng tên khác nhau, và không suy ra được tên từ thể loại) → không bắc cầu.
   - `game_publisher`: `game_id` và `publisher_id` độc lập với nhau (biết game không suy ra được publisher và ngược lại).
   - `game_platform`: `game_publisher_id`, `platform_id`, `release_year` độc lập lẫn nhau - platform không quyết định năm phát hành hay ngược lại.
-  - `region_sales`: chỉ có 1 thuộc tính không khoá (`num_sales`) nên không thể có phụ thuộc bắc cầu.
+  - `region_sales`: 3 thuộc tính không khoá `num_sales`, `created_at`, `updated_at` độc lập với nhau (doanh số không xác định thời điểm ghi/sửa dữ liệu và ngược lại) → không có thuộc tính không khoá nào xác định thuộc tính không khoá khác, không bắc cầu.
   - Các bảng danh mục (`platform`, `genre`, `publisher`, `region`) chỉ có 1 thuộc tính mô tả duy nhất → hiển nhiên đạt 3NF.
 
   → Toàn bộ 8 bảng đều đạt **3NF**, không cần tách thêm.
