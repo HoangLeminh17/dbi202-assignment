@@ -135,6 +135,16 @@ dbi202-assignment/
    python ai/recommend.py --game-id 1 --top-n 5   # test nhanh phan AI
    python web/app.py                              # chay web demo tai http://127.0.0.1:5000
    ```
+5. Chạy web demo NL2SQL Agent (hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên - nội bộ, không public):
+   ```
+   pip install -r ai/requirements.txt
+   cp ai/.env.example ai/.env
+   # Mở ai/.env, điền ANTHROPIC_API_KEY (hoặc OPENAI_API_KEY/GOOGLE_API_KEY tuỳ LLM_PROVIDER)
+   # và sửa DB_SERVER cho đúng instance SQL Server đang chạy (vd localhost\SQLEXPRESS01)
+   sqlcmd -S "<DB_SERVER>" -E -C -i sql/hoang/08_nl2sql_view.sql   # tạo view vw_game_sales_full
+   python -m ai.nl2sql.webapp     # chay web demo tai http://127.0.0.1:5050
+   ```
+   Hoặc chạy thẳng qua CLI không cần mở web: `python -m ai.nl2sql.agent --question "Top 5 game bán chạy nhất ở Nhật năm 2016"`. Xem kiến trúc đầy đủ tại [`ai/NL2SQL_ARCHITECTURE.md`](ai/NL2SQL_ARCHITECTURE.md).
    Nếu SQL Server không chạy ở `localhost` mặc định, sửa `CONNECTION_STRING` trong `ai/recommend.py` cho đúng.
 5. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
 6. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
