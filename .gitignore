@@ -1,0 +1,15 @@
+# Secrets / local config - KHONG commit, chi commit file .env.example lam template
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -22,7 +22,8 @@ dbi202-assignment/
 │   └── MoTaDeBai.md         # Tóm tắt tiếng Việt nội dung 2 file đề bài trên
 ├── sql/                     # Các file .sql theo yêu cầu, tách riêng theo từng người phụ trách
 │   ├── hoang/
-│   │   └── 04_queries.sql       # Hoàng - các câu query yêu cầu
+│   │   ├── 04_queries.sql       # Hoàng - các câu query yêu cầu
+│   │   └── 08_nl2sql_view.sql   # Hoàng - view vw_game_sales_full cho NL2SQL Agent
 │   ├── trung/
 │   │   ├── 01_createDB.sql      # Trung - tạo database + bảng
 │   │   ├── 03_insert.sql        # Trung - dữ liệu mẫu
@@ -43,7 +44,17 @@ dbi202-assignment/
 │   └── DataDictionary.md    # Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính
 ├── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
 │   ├── recommend.py         # Script gợi ý game tương tự (content-based, dùng genre/publisher/platform)
-│   └── requirements.txt     # Thư viện Python cần cài (pyodbc, pandas, scikit-learn)
+│   ├── nl2sql/               # NL2SQL Agent - hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên (nội bộ, xem NL2SQL_ARCHITECTURE.md)
+│   │   ├── agent.py             # Điều phối pipeline: guardrail -> LLM sinh SQL -> validate -> DB -> trả lời
+│   │   ├── schema.py            # Schema-as-context (rút gọn) + few-shot SQL examples
+│   │   ├── sql_validator.py     # Validator bằng AST (sqlglot): whitelist SELECT, auto TOP/LIMIT
+│   │   ├── guardrails.py        # Guardrail input (injection/domain) + output (grounding check)
+│   │   ├── llm_client.py        # Gọi LLM ngoài (Claude/ChatGPT/Gemini, chọn qua .env)
+│   │   ├── db.py                # Kết nối SQL Server read-only
+│   │   └── config.py            # Đọc cấu hình từ .env
+│   ├── NL2SQL_ARCHITECTURE.md   # Kiến trúc đầy đủ NL2SQL Agent (copy vào báo cáo mục Áp dụng AI)
+│   ├── .env.example          # Template biến môi trường (API key, DB) - KHÔNG chứa giá trị thật
+│   └── requirements.txt     # Thư viện Python cần cài (pyodbc, pandas, scikit-learn, sqlglot, anthropic...)
 └── web/                     # Web demo nối AI + SQL lại với nhau (Trung code/dev)
     ├── app.py               # Flask app: trang danh sách game + trang gợi ý (gọi ai/recommend.py)
     ├── templates/           # index.html, recommend.html
@@ -79,6 +90,7 @@ dbi202-assignment/
 - Dùng AI hỗ trợ sinh/tối ưu câu SQL (trigger, procedure, query phức tạp) - ghi rõ trong báo cáo phần nào có AI hỗ trợ.
 - Dùng AI phân tích dữ liệu game sales để đề xuất thêm nghiệp vụ/insight (ví dụ: xu hướng doanh số theo thể loại/khu vực), minh hoạ bằng query hoặc biểu đồ trong báo cáo.
 - **Đã code sẵn:** [`ai/recommend.py`](ai/recommend.py) — script Python goi y (recommend) game tương tự dựa trên thể loại/nhà phát hành/nền tảng (content-based filtering, dùng `scikit-learn`), kết nối trực tiếp vào database `Group7`. Hoàng phát triển thêm phần này, nêu rõ trong báo cáo đây là phần mở rộng ứng dụng AI.
+- **Đã code sẵn:** [`ai/nl2sql/`](ai/nl2sql/) — NL2SQL Agent hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên, dùng LLM API ngoài (Claude/ChatGPT/Gemini, chọn qua `.env`), có guardrail input/output và SQL validator (whitelist SELECT, chặn DML/DDL). **Chỉ phục vụ nội bộ nhóm/lớp, không deploy public.** Xem kiến trúc đầy đủ tại [`ai/NL2SQL_ARCHITECTURE.md`](ai/NL2SQL_ARCHITECTURE.md).
 
 ## Phân chia công việc
 
