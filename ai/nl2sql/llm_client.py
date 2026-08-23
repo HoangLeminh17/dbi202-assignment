@@ -8,6 +8,8 @@ from .schema import build_prompt_context
 
 NOT_APPLICABLE = "NOT_APPLICABLE"
 
+REQUEST_TIMEOUT_SECONDS = 30  # tranh treo vo han khi API cham/mang loi
+
 SYSTEM_PROMPT = (
     "Bạn là NL2SQL Agent nội bộ cho database Group7 (video game sales) trên "
     "SQL Server. Chỉ sinh 1 câu SELECT T-SQL duy nhất trên view "
@@ -21,7 +23,9 @@ SYSTEM_PROMPT = (
 def _generate_anthropic(prompt: str) -> str:
     import anthropic
 
-    client = anthropic.Anthropic(api_key=CONFIG.anthropic_api_key)
+    client = anthropic.Anthropic(
+        api_key=CONFIG.anthropic_api_key, timeout=REQUEST_TIMEOUT_SECONDS
+    )
     resp = client.messages.create(
         model=CONFIG.anthropic_model,
         max_tokens=512,
@@ -34,7 +38,7 @@ def _generate_anthropic(prompt: str) -> str:
 def _generate_openai(prompt: str) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=CONFIG.openai_api_key)
+    client = OpenAI(api_key=CONFIG.openai_api_key, timeout=REQUEST_TIMEOUT_SECONDS)
     resp = client.chat.completions.create(
         model=CONFIG.openai_model,
         messages=[
@@ -52,7 +56,11 @@ def _generate_gemini(prompt: str) -> str:
     model = genai.GenerativeModel(
         CONFIG.gemini_model, system_instruction=SYSTEM_PROMPT
     )
-    return model.generate_content(prompt).text
+    resp = model.generate_content(
+        prompt,
+        request_options={"timeout": REQUEST_TIMEOUT_SECONDS},
+    )
+    return resp.text
 
 
 _PROVIDERS = {

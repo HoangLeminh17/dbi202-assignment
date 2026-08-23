@@ -10,6 +10,9 @@ __pycache__/
 venv/
 *.egg-info/
 
+# NL2SQL Agent - log runtime (khong commit, chi la du lieu demo local)
+ai/nl2sql/logs.db
+
 # OS
 .DS_Store
 Thumbs.db

@@ -126,14 +126,32 @@ code, mô tả để tham khảo khi mở rộng):
 
 ## 7. Monitoring khi chạy production
 
-`agent.py` hiện log từng bước pipeline qua `logging` (SQL sinh ra, SQL sau
-validate, số dòng kết quả, lý do bị guardrail chặn). Đây là nền tối thiểu; đầy
-đủ hơn cho production cần 3 nhóm (hướng phát triển, chưa cài đặt):
+**Đã cài đặt** (mức cơ bản, đủ cho demo nội bộ):
 
-- **Hệ thống/hiệu năng**: latency từng bước, error rate, resource usage DB -
-  Prometheus + Grafana hoặc APM.
-- **Chất lượng/an toàn AI**: tỉ lệ guardrail chặn, % câu trả lời grounded,
-  human feedback (thumbs up/down), drift detection trên phân bố câu hỏi.
+- `agent.py` đo thời gian từng bước (LLM sinh SQL, DB exec, LLM diễn giải,
+  tổng) và ghi 1 dòng log cho **mọi** request (dù thành công/bị chặn/lỗi hạ
+  tầng) vào `ai/nl2sql/logs.db` (SQLite) - xem `logging_store.py`.
+- **Trang admin** `webapp.py` route `/admin` (bảo vệ bằng HTTP Basic Auth,
+  `ADMIN_USER`/`ADMIN_PASSWORD` trong `.env`): bảng toàn bộ request gần nhất
+  (câu hỏi, SQL sinh ra, SQL sau validate, số dòng, câu trả lời, bị chặn ở
+  bước nào, latency từng bước) + 3 số liệu tổng quan (tổng số câu hỏi, số bị
+  chặn, latency trung bình).
+- **Bắt lỗi hạ tầng**: LLM call có timeout 30s (`llm_client.REQUEST_TIMEOUT_SECONDS`),
+  DB có query timeout tương ứng `QUERY_TIMEOUT_SECONDS`; nếu timeout/mất kết
+  nối, `agent.ask()` trả về `error=True` thay vì treo tiến trình, phía web
+  hiện thông báo bảo trì thay vì đứng im vô thời hạn.
+- Nhờ đo latency từng bước mà phát hiện được 1 bug thật khi demo: `db.py`
+  trước đó mở connection SQL Server mới cho mỗi câu hỏi, tốn 18-118 giây/lần
+  (đo được qua cột "DB exec" trên `/admin`) do bắt tay với named instance qua
+  SQL Browser không ổn định - sửa bằng cách tái sử dụng 1 connection cho cả
+  tiến trình, giảm còn ~vài chục-vài trăm ms.
+
+**Chưa cài đặt (hướng phát triển)** - đầy đủ hơn cho production cần 3 nhóm:
+
+- **Hệ thống/hiệu năng**: Prometheus + Grafana hoặc APM thay vì SQLite/HTML
+  tự chế; connection pool thật thay vì 1 connection đơn.
+- **Chất lượng/an toàn AI**: % câu trả lời grounded theo thời gian, human
+  feedback (thumbs up/down), drift detection trên phân bố câu hỏi.
 - **Dữ liệu**: dashboard chất lượng dữ liệu, alert khi constraint bị vi phạm
   bất thường.
 
@@ -147,7 +165,8 @@ validate, số dòng kết quả, lý do bị guardrail chặn). Đây là nền
 | SQL Validator (AST, whitelist, auto-limit) | Đã cài đặt (`sql_validator.py`) |
 | Guardrail input (injection filter + domain check qua LLM) | Đã cài đặt (`guardrails.py` + `llm_client.NOT_APPLICABLE`) |
 | Guardrail output (grounding check cơ bản) | Đã cài đặt (`guardrails.py`) |
-| Log pipeline | Đã cài đặt (module `logging`) |
+| Log pipeline + trang admin monitor (`/admin`) | Đã cài đặt (`logging_store.py`, `webapp.py`) |
+| Timeout + bắt lỗi hạ tầng (LLM/DB), không treo vô hạn | Đã cài đặt (`llm_client.py`, `agent.py`, `db.py`) |
 | Intent classifier riêng, rate limit, cost estimate/EXPLAIN | Hướng phát triển |
 | Staging + validation + merge có audit log | Hướng phát triển (mô tả ở mục 5) |
 | Anomaly detection, trust scoring, immutable audit trail | Hướng phát triển (mục 6) |

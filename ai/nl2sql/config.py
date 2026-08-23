@@ -28,5 +28,8 @@ class Config:
     max_rows: int = int(os.getenv("MAX_ROWS", "100"))
     query_timeout_seconds: int = int(os.getenv("QUERY_TIMEOUT_SECONDS", "10"))
 
+    admin_user: str = os.getenv("ADMIN_USER", "admin")
+    admin_password: str = os.getenv("ADMIN_PASSWORD", "")
+
 
 CONFIG = Config()

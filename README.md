@@ -44,12 +44,13 @@ dbi202-assignment/
 └── ai/                       # Ứng dụng AI: NL2SQL Agent (Hoàng phụ trách)
     ├── nl2sql/                   # Hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên - nội bộ, không public
     │   ├── agent.py                  # Điều phối pipeline: guardrail -> LLM sinh SQL -> validate -> DB -> trả lời
-    │   ├── webapp.py                 # Web demo (Flask), chat hỏi đáp
+    │   ├── webapp.py                 # Web demo (Flask): trang chat + trang /admin xem log
+    │   ├── logging_store.py          # Ghi log mọi request vào SQLite (ai/nl2sql/logs.db)
     │   ├── schema.py                 # Schema-as-context + few-shot SQL examples
     │   ├── sql_validator.py          # Validator bằng AST (sqlglot): whitelist SELECT, auto TOP/LIMIT
     │   ├── guardrails.py             # Chặn prompt injection + grounding check output
     │   ├── llm_client.py             # Gọi LLM ngoài (Claude/ChatGPT/Gemini, chọn qua .env)
-    │   ├── db.py                     # Kết nối SQL Server read-only
+    │   ├── db.py                     # Kết nối SQL Server read-only (tái sử dụng connection)
     │   └── config.py                 # Đọc cấu hình từ .env
     ├── NL2SQL_ARCHITECTURE.md    # Kiến trúc đầy đủ (copy vào báo cáo mục Áp dụng AI)
     ├── .env.example               # Template biến môi trường (API key, DB) - KHÔNG chứa giá trị thật
@@ -84,6 +85,7 @@ dbi202-assignment/
 
 - Dùng LLM API ngoài (Claude/ChatGPT/Gemini, chọn qua `.env`) để sinh SQL từ câu hỏi, chạy trên view `vw_game_sales_full`, rồi diễn giải kết quả thành câu trả lời tự nhiên.
 - Có guardrail chặn prompt injection, SQL validator (whitelist SELECT, chặn DML/DDL, tự giới hạn số dòng), và grounding check chống LLM bịa số liệu.
+- Trang **`/admin`** (Basic Auth) xem log toàn bộ request: câu hỏi, SQL sinh ra, có bị chặn không, thời gian xử lý từng bước.
 - **Chỉ phục vụ nội bộ nhóm/lớp, không deploy public.**
 - Kiến trúc đầy đủ: [`ai/NL2SQL_ARCHITECTURE.md`](ai/NL2SQL_ARCHITECTURE.md) (copy vào báo cáo mục này).
 - Cách chạy: xem mục "Hướng dẫn setup để dev tiếp" bên dưới.
@@ -132,13 +134,13 @@ dbi202-assignment/
 pip install -r ai/requirements.txt
 cp ai/.env.example ai/.env
 ```
-Mở file `ai/.env` vừa tạo, điền `ANTHROPIC_API_KEY` (hoặc `OPENAI_API_KEY`/`GOOGLE_API_KEY` tuỳ `LLM_PROVIDER`), sửa `DB_SERVER` đúng instance SQL Server đang chạy (vd `localhost\SQLEXPRESS01`).
+Mở file `ai/.env` vừa tạo, điền `ANTHROPIC_API_KEY` (hoặc `OPENAI_API_KEY`/`GOOGLE_API_KEY` tuỳ `LLM_PROVIDER`), sửa `DB_SERVER` đúng instance SQL Server đang chạy (vd `localhost\SQLEXPRESS01`), và đặt `ADMIN_PASSWORD` (để dùng trang xem log).
 
 Chạy web chat:
 ```
 python -m ai.nl2sql.webapp
 ```
-Mở trình duyệt: http://127.0.0.1:5050
+Mở trình duyệt: http://127.0.0.1:5050 (trang chat) và http://127.0.0.1:5050/admin (xem log, đăng nhập bằng `ADMIN_USER`/`ADMIN_PASSWORD`).
 
 Hoặc test nhanh qua CLI không cần mở web:
 ```
