@@ -20,8 +20,13 @@ INJECTION_PATTERNS = [
 ]
 
 DOMAIN_KEYWORDS = [
-    "game", "doanh số", "sales", "publisher", "phát hành", "thể loại", "genre",
-    "nền tảng", "platform", "khu vực", "region", "năm", "year", "top",
+    # Tiếng Việt (có/không dấu đều so khớp được nhờ _strip_accents)
+    "trò chơi", "game", "doanh số", "doanh thu", "bán chạy", "bán", "xếp hạng",
+    "thống kê", "xu hướng", "nhà phát hành", "phát hành", "thể loại",
+    "nền tảng", "khu vực", "vùng", "năm", "top",
+    # English
+    "video game", "sales", "revenue", "best-selling", "best selling",
+    "publisher", "genre", "platform", "region", "year", "trend", "ranking",
 ]
 
 
