@@ -103,7 +103,7 @@ dbi202-assignment/
 - Viết `sql/hoang/04_queries.sql` (đặc biệt các câu group by/aggregate, subquery phức tạp gắn với insight).
 - Code/dev NL2SQL Agent (`ai/nl2sql/`): hoàn thiện, test thử với dữ liệu thật.
 - Phần "Áp dụng AI" trong báo cáo + slide.
-- Tổng hợp `slide-report/Report.docx`, làm `slide-report/Slide.pptx`, gửi mail assignment (CC nhóm).
+- Dựng khung + tổng hợp `slide-report/Report.docx` và `slide-report/Slide.pptx` (mỗi người viết phần mình phụ trách, xem bên dưới), gửi mail assignment (CC nhóm).
 
 Việc phát sinh thêm ngoài phân công ban đầu (đều thuộc mảng AI/Hoàng phụ trách):
 - `sql/hoang/10_readonly_user.sql` — tạo user `nl2sql_readonly` (WITHOUT LOGIN) chỉ có quyền SELECT trên view; `db.py` chạy mọi SQL qua `EXECUTE AS USER` user này, chặn thêm 1 lớp ở phía DB (không chỉ chặn ở code app), không cần đổi cấu hình đăng nhập của SQL Server.
@@ -114,12 +114,13 @@ Việc phát sinh thêm ngoài phân công ban đầu (đều thuộc mảng AI/
 - Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
 - Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
 - Viết `sql/trung/07_procedure.sql`.
-- Hỗ trợ phần cài đặt vật lý trong báo cáo.
+- Viết phần "7. Cài đặt vật lý" và "11. Procedure/Function" trong `slide-report/Report.docx` + slide tương ứng trong `slide-report/Slide.pptx`, kèm ảnh chụp chạy thử.
 
 **Vi (IS):**
 - Viết `sql/vi/02_constraints.sql` (≥3 ràng buộc: CHECK, UNIQUE, FK...).
 - Viết `sql/vi/06_trigger.sql` và `sql/vi/05_transaction.sql` (có ROLLBACK).
 - Đề xuất thêm khía cạnh bảo mật (phân quyền GRANT/REVOKE theo vai trò, kiểm tra rủi ro injection trong các câu query) - có thể tính là phần mở rộng cho báo cáo.
+- Viết phần "6. Ràng buộc dữ liệu", "9. Transaction", "10. Trigger" trong `slide-report/Report.docx` + slide tương ứng trong `slide-report/Slide.pptx`.
 
 **Chung cả nhóm:**
 - Thống nhất tỷ lệ đóng góp trước khi nộp để ghi vào báo cáo.
