@@ -128,24 +128,35 @@ dbi202-assignment/
    5. `sql/trung/07_procedure.sql` — stored procedure.
    6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
 3. Nếu chỉ cần restore nhanh từ dữ liệu gốc: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database `Group7` đầy đủ dữ liệu, sau đó chạy tiếp `02_constraints.sql` → `06_trigger.sql` → `07_procedure.sql` để bổ sung các phần còn thiếu.
-4. Chạy phần AI/web demo (sau khi database đã có dữ liệu):
+4. Cài thư viện Python (chạy 1 lần, dùng chung cho cả 2 web demo bên dưới):
    ```
    pip install -r ai/requirements.txt
    pip install -r web/requirements.txt
-   python ai/recommend.py --game-id 1 --top-n 5   # test nhanh phan AI
-   python web/app.py                              # chay web demo tai http://127.0.0.1:5000
    ```
-5. Chạy web demo NL2SQL Agent (hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên - nội bộ, không public):
+5. **Web demo 1 — danh sách game + gợi ý game tương tự** (cổng 5000):
    ```
-   pip install -r ai/requirements.txt
+   python web/app.py
+   ```
+   Mở trình duyệt: http://127.0.0.1:5000
+
+6. **Web demo 2 — chatbot NL2SQL** (hỏi đáp dữ liệu bằng tiếng Việt/Anh, cổng 5050, nội bộ - không public):
+   ```
    cp ai/.env.example ai/.env
-   # Mở ai/.env, điền ANTHROPIC_API_KEY (hoặc OPENAI_API_KEY/GOOGLE_API_KEY tuỳ LLM_PROVIDER)
-   # và sửa DB_SERVER cho đúng instance SQL Server đang chạy (vd localhost\SQLEXPRESS01)
-   sqlcmd -S "<DB_SERVER>" -E -C -i sql/hoang/08_nl2sql_view.sql   # tạo view vw_game_sales_full
-   python -m ai.nl2sql.webapp     # chay web demo tai http://127.0.0.1:5050
    ```
-   Hoặc chạy thẳng qua CLI không cần mở web: `python -m ai.nl2sql.agent --question "Top 5 game bán chạy nhất ở Nhật năm 2016"`. Xem kiến trúc đầy đủ tại [`ai/NL2SQL_ARCHITECTURE.md`](ai/NL2SQL_ARCHITECTURE.md).
-   Nếu SQL Server không chạy ở `localhost` mặc định, sửa `CONNECTION_STRING` trong `ai/recommend.py` cho đúng.
+   Mở file `ai/.env` vừa tạo, điền `ANTHROPIC_API_KEY` (hoặc `OPENAI_API_KEY`/`GOOGLE_API_KEY` tuỳ `LLM_PROVIDER`), sửa `DB_SERVER` đúng instance SQL Server đang chạy (vd `localhost\SQLEXPRESS01`). Sau đó:
+   ```
+   sqlcmd -S "<DB_SERVER>" -E -C -i sql/hoang/08_nl2sql_view.sql
+   python -m ai.nl2sql.webapp
+   ```
+   Mở trình duyệt: http://127.0.0.1:5050
+
+   Không muốn mở web thì test nhanh qua CLI:
+   ```
+   python -m ai.nl2sql.agent --question "Top 5 game bán chạy nhất ở Nhật năm 2016"
+   ```
+   Kiến trúc đầy đủ: [`ai/NL2SQL_ARCHITECTURE.md`](ai/NL2SQL_ARCHITECTURE.md).
+
+   > Nếu SQL Server không chạy ở `localhost` mặc định, sửa `CONNECTION_STRING` trong `ai/recommend.py` (web demo 1) cho đúng.
 5. Mỗi người khi sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, rồi tạo Pull Request để cả nhóm review trước khi merge vào `main`.
 6. Trước khi nộp bài, kiểm tra lại toàn bộ script chạy được từ đầu trên một database rỗng (drop và tạo lại `Group7` rồi chạy lại toàn bộ theo thứ tự ở bước 2).
 
