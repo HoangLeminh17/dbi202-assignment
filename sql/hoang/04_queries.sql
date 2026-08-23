@@ -53,4 +53,47 @@ JOIN region_sales rs ON rs.game_platform_id = gpl.id
 GROUP BY p.publisher_name
 ORDER BY tong_doanh_so DESC;
 
--- TODO (Hoàng): bổ sung thêm các câu query insight (có thể có AI hỗ trợ thiết kế)
+-- ============================================
+-- Query insight bổ sung (phục vụ NL2SQL Agent - ai/nl2sql/schema.py few-shot)
+-- ============================================
+
+-- 6. Xu hướng doanh số theo năm (toàn hệ thống)
+SELECT gpl.release_year, SUM(rs.num_sales) AS tong_doanh_so
+FROM game_platform gpl
+JOIN region_sales rs ON rs.game_platform_id = gpl.id
+GROUP BY gpl.release_year
+ORDER BY gpl.release_year;
+
+-- 7. Nền tảng nào bán chạy nhất
+SELECT pf.platform_name, SUM(rs.num_sales) AS tong_doanh_so
+FROM platform pf
+JOIN game_platform gpl ON gpl.platform_id = pf.id
+JOIN region_sales rs ON rs.game_platform_id = gpl.id
+GROUP BY pf.platform_name
+ORDER BY tong_doanh_so DESC;
+
+-- 8. Game bán chạy nhất trên mỗi nền tảng (window function ROW_NUMBER)
+SELECT platform_name, game_name, tong_doanh_so
+FROM (
+    SELECT pf.platform_name, g.game_name,
+           SUM(rs.num_sales) AS tong_doanh_so,
+           ROW_NUMBER() OVER (PARTITION BY pf.platform_name ORDER BY SUM(rs.num_sales) DESC) AS rn
+    FROM platform pf
+    JOIN game_platform gpl ON gpl.platform_id = pf.id
+    JOIN game_publisher gp ON gp.id = gpl.game_publisher_id
+    JOIN game g ON g.id = gp.game_id
+    JOIN region_sales rs ON rs.game_platform_id = gpl.id
+    GROUP BY pf.platform_name, g.game_name
+) t
+WHERE rn = 1;
+
+-- 9. Doanh số từng thể loại theo từng khu vực
+SELECT gr.genre_name, r.region_name, SUM(rs.num_sales) AS tong_doanh_so
+FROM genre gr
+JOIN game g ON g.genre_id = gr.id
+JOIN game_publisher gp ON gp.game_id = g.id
+JOIN game_platform gpl ON gpl.game_publisher_id = gp.id
+JOIN region_sales rs ON rs.game_platform_id = gpl.id
+JOIN region r ON r.id = rs.region_id
+GROUP BY gr.genre_name, r.region_name
+ORDER BY gr.genre_name, tong_doanh_so DESC;
