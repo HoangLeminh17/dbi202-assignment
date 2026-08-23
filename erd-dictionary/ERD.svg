@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1340" font-family="Arial, Helvetica, sans-serif">
   <rect x="0" y="0" width="1900" height="1340" fill="#ffffff"/>
 
-  <text x="950" y="40" text-anchor="middle" font-size="26" font-weight="bold" fill="#1a1a1a">ERD - Group7 Video Game Sales (ky hieu Chen)</text>
+  <text x="950" y="40" text-anchor="middle" font-size="26" font-weight="bold" fill="#1a1a1a">ERD - Group7 Video Game Sales</text>
 
   <!-- ============ LINES (ve truoc de nam duoi cac hinh) ============ -->
   <g stroke="#333333" stroke-width="2" fill="none">
