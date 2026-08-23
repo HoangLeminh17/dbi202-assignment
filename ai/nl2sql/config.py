@@ -1,4 +1,4 @@
-"""Doc cau hinh tu file .env (khong commit .env that, xem ai/.env.example)."""
+"""Đọc cấu hình từ file .env (không commit .env thật, xem ai/.env.example)."""
 import os
 from dataclasses import dataclass
 

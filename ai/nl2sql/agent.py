@@ -1,10 +1,10 @@
-"""NL2SQL Agent - dieu phoi pipeline day du (xem NL2SQL_ARCHITECTURE.md muc 1):
+"""NL2SQL Agent - điều phối pipeline đầy đủ (xem NL2SQL_ARCHITECTURE.md mục 1):
 
   guardrail input -> NL2SQL (LLM) -> SQL validator -> DB read-only
-  -> LLM dien giai -> guardrail output -> ket qua + log.
+  -> LLM diễn giải -> guardrail output -> kết quả + log.
 
-Dung noi bo (nhom/lop), khong deploy public. Chay thu:
-  python -m ai.nl2sql.agent --question "Top 5 game ban chay nhat o Nhat nam 2016"
+Dùng nội bộ (nhóm/lớp), không deploy public. Chạy thử:
+  python -m ai.nl2sql.agent --question "Top 5 game bán chạy nhất ở Nhật năm 2016"
 """
 import argparse
 import logging
@@ -50,11 +50,11 @@ def ask(question: str) -> AgentResult:
         result.blocked, result.reason = True, exc.reason
         return result
     result.sql = safe_sql
-    logger.info("SQL da validate: %s", safe_sql)
+    logger.info("SQL đã validate: %s", safe_sql)
 
     columns, rows = db.execute_select(safe_sql)
     result.columns, result.rows = columns, rows
-    logger.info("Ket qua: %d dong", len(rows))
+    logger.info("Kết quả: %d dòng", len(rows))
 
     answer = llm_client.explain_result(question, safe_sql, rows)
 
@@ -71,7 +71,7 @@ def ask(question: str) -> AgentResult:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="NL2SQL Agent (noi bo)")
+    parser = argparse.ArgumentParser(description="NL2SQL Agent (nội bộ)")
     parser.add_argument("--question", required=True)
     args = parser.parse_args()
 

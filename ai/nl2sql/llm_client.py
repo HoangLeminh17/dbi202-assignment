@@ -1,15 +1,15 @@
-"""LLM client - truu tuong hoa provider ben ngoai (Claude / ChatGPT / Gemini).
+"""LLM client - trừu tượng hoá provider bên ngoài (Claude / ChatGPT / Gemini).
 
-Chon provider qua bien moi truong LLM_PROVIDER trong .env (xem ai/.env.example).
-Chi import SDK cua provider dang dung (lazy import) de khong bat buoc cai ca 3.
+Chọn provider qua biến môi trường LLM_PROVIDER trong .env (xem ai/.env.example).
+Chỉ import SDK của provider đang dùng (lazy import) để không bắt buộc cài cả 3.
 """
 from .config import CONFIG
 from .schema import build_prompt_context
 
 SYSTEM_PROMPT = (
-    "Ban la NL2SQL Agent noi bo cho database Group7 (video game sales) tren "
-    "SQL Server. Chi sinh 1 cau SELECT T-SQL duy nhat tren view "
-    "vw_game_sales_full, khong giai thich them, khong dung DML/DDL."
+    "Bạn là NL2SQL Agent nội bộ cho database Group7 (video game sales) trên "
+    "SQL Server. Chỉ sinh 1 câu SELECT T-SQL duy nhất trên view "
+    "vw_game_sales_full, không giải thích thêm, không dùng DML/DDL."
 )
 
 
@@ -60,15 +60,15 @@ _PROVIDERS = {
 def _call_llm(prompt: str) -> str:
     provider = CONFIG.llm_provider.lower()
     if provider not in _PROVIDERS:
-        raise ValueError(f"LLM_PROVIDER khong ho tro: {provider}")
+        raise ValueError(f"LLM_PROVIDER không hỗ trợ: {provider}")
     return _PROVIDERS[provider](prompt)
 
 
 def generate_sql(question: str) -> str:
     prompt = (
         f"{build_prompt_context()}\n\n"
-        f"Cau hoi: {question}\n"
-        "Chi tra loi bang 1 cau SQL, khong markdown, khong giai thich."
+        f"Câu hỏi: {question}\n"
+        "Chỉ trả lời bằng 1 câu SQL, không markdown, không giải thích."
     )
     raw = _call_llm(prompt)
     return raw.strip().strip("`").removeprefix("sql").strip()
@@ -76,10 +76,10 @@ def generate_sql(question: str) -> str:
 
 def explain_result(question: str, sql: str, rows: list) -> str:
     prompt = (
-        f"Cau hoi cua nguoi dung: {question}\n"
-        f"SQL da chay: {sql}\n"
-        f"Ket qua ({len(rows)} dong dau): {rows[:20]}\n\n"
-        "Dien giai ket qua tren thanh 1-2 cau tra loi tu nhien bang tieng Viet, "
-        "CHI dung so lieu co trong ket qua, khong tu bia them so."
+        f"Câu hỏi của người dùng: {question}\n"
+        f"SQL đã chạy: {sql}\n"
+        f"Kết quả ({len(rows)} dòng đầu): {rows[:20]}\n\n"
+        "Diễn giải kết quả trên thành 1-2 câu trả lời tự nhiên bằng tiếng Việt, "
+        "CHỈ dùng số liệu có trong kết quả, không tự bịa thêm số."
     )
     return _call_llm(prompt).strip()
