@@ -10,3 +10,5 @@ flask>=3.0   # web demo: ai/nl2sql/webapp.py
 anthropic>=0.40   # LLM_PROVIDER=anthropic
 # openai>=1.50    # LLM_PROVIDER=openai
 # google-generativeai>=0.8  # LLM_PROVIDER=gemini
+
+pytest>=8.0   # chạy: pytest ai/nl2sql/tests/

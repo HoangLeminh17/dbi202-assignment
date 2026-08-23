@@ -9,6 +9,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.pytest_cache/
 
 # NL2SQL Agent - log runtime (khong commit, chi la du lieu demo local)
 ai/nl2sql/logs.db

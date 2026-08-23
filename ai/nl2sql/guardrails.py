@@ -15,8 +15,11 @@ import re
 import unicodedata
 
 INJECTION_PATTERNS = [
-    r"ignore (all|previous|above) instructions",
-    r"bỏ qua (hướng dẫn|chỉ dẫn|instructions)",
+    # \b...\b{0,20 ky tu} cho phep nhieu tu dem (vd "ignore all previous
+    # instructions") thay vi chi khop dung 1 tu dem nhu ban cu - phat hien qua
+    # test_blocks_ignore_instructions_english (ai/nl2sql/tests/test_guardrails.py).
+    r"ignore\b.{0,20}\binstructions\b",
+    r"bỏ qua\b.{0,20}\b(hướng dẫn|chỉ dẫn|instructions)",
     r"drop\s+table",
     r"delete\s+from",
     r"update\s+\w+\s+set",
