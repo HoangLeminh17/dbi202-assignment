@@ -41,20 +41,23 @@ dbi202-assignment/
 │   ├── ERD.md                # Sơ đồ ER + giải thích quan hệ, phụ thuộc hàm, chuẩn hoá 3NF
 │   ├── ERD.svg / ERD.jpg     # Sơ đồ ER (nguồn vector / ảnh chèn báo cáo)
 │   └── DataDictionary.md     # Đặc tả yêu cầu dữ liệu (data dictionary)
-└── ai/                       # Ứng dụng AI: NL2SQL Agent (Hoàng phụ trách)
-    ├── nl2sql/                   # Hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên - nội bộ, không public
-    │   ├── agent.py                  # Điều phối pipeline: guardrail -> LLM sinh SQL -> validate -> DB -> trả lời
-    │   ├── webapp.py                 # Web demo (Flask): trang chat + trang /admin xem log
-    │   ├── logging_store.py          # Ghi log mọi request vào SQLite (ai/nl2sql/logs.db)
-    │   ├── schema.py                 # Schema-as-context + few-shot SQL examples
-    │   ├── sql_validator.py          # Validator bằng AST (sqlglot): whitelist SELECT, auto TOP/LIMIT
-    │   ├── guardrails.py             # Chặn prompt injection + grounding check output
-    │   ├── llm_client.py             # Gọi LLM ngoài (Claude/ChatGPT/Gemini, chọn qua .env)
-    │   ├── db.py                     # Kết nối SQL Server read-only (tái sử dụng connection)
-    │   └── config.py                 # Đọc cấu hình từ .env
-    ├── NL2SQL_ARCHITECTURE.md    # Kiến trúc đầy đủ (copy vào báo cáo mục Áp dụng AI)
-    ├── .env.example               # Template biến môi trường (API key, DB) - KHÔNG chứa giá trị thật
-    └── requirements.txt          # Thư viện Python cần cài
+├── ai/                       # Ứng dụng AI: NL2SQL Agent (Hoàng phụ trách)
+│   ├── nl2sql/                   # Hỏi đáp dữ liệu bằng ngôn ngữ tự nhiên - nội bộ, không public
+│   │   ├── agent.py                  # Điều phối pipeline: guardrail -> LLM sinh SQL -> validate -> DB -> trả lời
+│   │   ├── webapp.py                 # Web demo (Flask): trang chat + trang /admin xem log
+│   │   ├── logging_store.py          # Ghi log mọi request vào SQLite (ai/nl2sql/logs.db)
+│   │   ├── schema.py                 # Schema-as-context + few-shot SQL examples
+│   │   ├── sql_validator.py          # Validator bằng AST (sqlglot): whitelist SELECT, auto TOP/LIMIT
+│   │   ├── guardrails.py             # Chặn prompt injection + grounding check output
+│   │   ├── llm_client.py             # Gọi LLM ngoài (Claude/ChatGPT/Gemini, chọn qua .env)
+│   │   ├── db.py                     # Kết nối SQL Server read-only (tái sử dụng connection)
+│   │   └── config.py                 # Đọc cấu hình từ .env
+│   ├── NL2SQL_ARCHITECTURE.md    # Kiến trúc đầy đủ (copy vào báo cáo mục Áp dụng AI)
+│   ├── Dockerfile                 # Build image chạy NL2SQL Agent bằng Docker
+│   ├── .env.example               # Template biến môi trường (API key, DB) - KHÔNG chứa giá trị thật
+│   └── requirements.txt          # Thư viện Python cần cài
+├── docker-compose.yml       # Chạy `ai/Dockerfile` bằng `docker compose up`
+└── .dockerignore            # Chỉ đóng gói thư mục ai/ vào Docker build context
 ```
 
 ## Yêu cầu đề bài (tổng hợp từ `yeu-cau-assignment/Assignment1.docx` và `yeu-cau-assignment/Assignment2.docx`)
@@ -146,6 +149,20 @@ Hoặc test nhanh qua CLI không cần mở web:
 ```
 python -m ai.nl2sql.agent --question "Top 5 game bán chạy nhất ở Nhật năm 2016"
 ```
+
+**3b. Hoặc chạy NL2SQL Agent bằng Docker** (không cần cài Python/thư viện lên máy):
+
+> Cần cài **Docker Desktop**. Chưa test build trên máy thật (máy dev hiện không có Docker) - nếu build lỗi, báo lại để sửa.
+
+1. `cp ai/.env.example ai/.env` rồi điền `ANTHROPIC_API_KEY`/`ADMIN_PASSWORD` như bước 3 (không cần sửa `DB_SERVER` trong file này - `docker-compose.yml` tự ghi đè riêng cho bản Docker).
+2. Mở `docker-compose.yml`, sửa dòng `DB_SERVER=host.docker.internal\SQLEXPRESS01` nếu tên instance SQL Server của bạn khác (container không dùng được `localhost` vì SQL Server chạy trên máy host, ngoài container).
+3. Đảm bảo SQL Server bật **TCP/IP** (SQL Server Configuration Manager → Protocols → TCP/IP → Enabled) và Windows Firewall cho phép kết nối đến, vì container không dò được instance qua SQL Browser (UDP) ổn định như chạy local.
+4. Chạy:
+   ```
+   docker compose up --build
+   ```
+5. Mở trình duyệt: http://127.0.0.1:5050 (và `/admin` để xem log) - giống hệt cách chạy local ở bước 3.
+6. Tắt: `docker compose down` (thêm `-v` nếu muốn xoá luôn log đã lưu trong volume).
 
 **4. Quy trình làm việc:** mỗi người sửa file trong thư mục phụ trách của mình thì tạo nhánh riêng (`git checkout -b <ten>/<mo-ta-ngan>`), commit, tạo Pull Request để cả nhóm review trước khi merge vào `main`.
 

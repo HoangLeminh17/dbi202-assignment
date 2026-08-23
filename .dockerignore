@@ -1,0 +1,7 @@
+# Chi can thu muc ai/ de build image NL2SQL Agent - loai het phan con lai
+# cho build context nho, nhanh.
+*
+!ai
+ai/.env
+ai/**/__pycache__
+ai/nl2sql/logs.db

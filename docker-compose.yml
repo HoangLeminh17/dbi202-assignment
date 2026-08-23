@@ -1,0 +1,25 @@
+services:
+  nl2sql-agent:
+    build:
+      context: .
+      dockerfile: ai/Dockerfile
+    ports:
+      - "5050:5050"
+    env_file:
+      - ai/.env
+    environment:
+      - LOGS_DB_PATH=/data/logs.db
+      # Ghi de DB_SERVER trong ai/.env (dung cho chay local) - container
+      # khong thay "localhost" cua may host, phai tro qua host.docker.internal.
+      # Sua instance cho dung (vd bo \SQLEXPRESS01 neu dung default instance).
+      - "DB_SERVER=host.docker.internal\\SQLEXPRESS01"
+    extra_hosts:
+      # De container goi duoc "host.docker.internal" tro ve may host tren
+      # Linux (Windows/Mac Docker Desktop da ho tro san ten nay).
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Giu lai log giua cac lan restart container (tuy chon, co the bo dong nay).
+      - nl2sql_logs:/data
+
+volumes:
+  nl2sql_logs:

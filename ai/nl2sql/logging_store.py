@@ -5,10 +5,14 @@ Mỗi lần agent.ask() chạy xong (dù thành công hay bị guardrail/validat
 lý phía user: câu hỏi, SQL đã sinh, có bị chặn không (và chặn ở bước nào),
 số dòng kết quả, câu trả lời, thời gian từng bước.
 """
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "logs.db"
+# Cho phep override qua LOGS_DB_PATH (vd trong Docker, mount volume rieng
+# ngoai thu muc code de log song sot qua cac lan restart container).
+DB_PATH = Path(os.getenv("LOGS_DB_PATH") or (Path(__file__).parent / "logs.db"))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS request_logs (

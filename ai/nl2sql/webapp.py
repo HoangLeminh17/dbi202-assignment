@@ -431,4 +431,10 @@ def admin():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5050, debug=True)
+    import os
+
+    # 0.0.0.0 de Docker port-forward duoc; van truy cap binh thuong qua
+    # 127.0.0.1 khi chay local (khong Docker).
+    host = os.getenv("WEBAPP_HOST", "0.0.0.0")
+    debug = os.getenv("WEBAPP_DEBUG", "1") == "1"
+    app.run(host=host, port=5050, debug=debug)
