@@ -10,6 +10,13 @@ Tái sử dụng 1 connection cho cả tiến trình thay vì mở/đóng mỗi 
 connection mới tới named instance (qua SQL Browser) có thể mất vài chục giây
 mỗi lần và không ổn định (đo được qua trang /admin), nên chỉ mở lại khi
 connection cũ đã chết.
+
+webapp.py chạy Flask với threaded=True (nhiều request /ask có thể chạy song
+song), nhưng 1 connection pyodbc dùng chung KHÔNG an toàn nếu nhiều thread
+gọi execute() đồng thời trên cùng 1 connection - nên execute_select() khoá
+(_lock) cho toàn bộ thao tác truy vấn, không chỉ lúc lấy connection. Vì các
+câu query đã nhanh (sau khi có index, xem 09_indexes.sql) nên khoá tuần tự ở
+đây không phải là điểm nghẽn hiệu năng.
 """
 import threading
 
@@ -18,7 +25,7 @@ import pyodbc
 from .config import CONFIG
 
 _conn = None
-_lock = threading.Lock()
+_lock = threading.RLock()  # reentrant: execute_select() giu lock roi goi _get_connection()
 
 
 def _connection_string() -> str:
@@ -57,10 +64,15 @@ def _get_connection() -> pyodbc.Connection:
 
 
 def execute_select(sql: str):
-    """Chạy 1 câu SELECT (đã qua sql_validator) và trả về (columns, rows)."""
-    conn = _get_connection()
-    cursor = conn.cursor()
-    cursor.execute(sql)
-    columns = [c[0] for c in cursor.description]
-    rows = [tuple(row) for row in cursor.fetchall()]
-    return columns, rows
+    """Chạy 1 câu SELECT (đã qua sql_validator) và trả về (columns, rows).
+
+    Khoá toàn bộ thao tác (không chỉ lúc lấy connection) vì connection dùng
+    chung không an toàn cho nhiều thread gọi execute() đồng thời.
+    """
+    with _lock:
+        conn = _get_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        columns = [c[0] for c in cursor.description]
+        rows = [tuple(row) for row in cursor.fetchall()]
+        return columns, rows

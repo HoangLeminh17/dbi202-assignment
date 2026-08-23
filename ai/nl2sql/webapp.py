@@ -111,6 +111,9 @@ PAGE = """
            color: white; font-size: 14px; cursor: pointer; }
   button[type=submit]:hover { background: var(--accent-dark); }
   button:disabled { background: #a8adba !important; cursor: default; }
+  #stopBtn { padding: 12px 20px; border-radius: 9px; border: 1px solid #d0341f; background: white;
+             color: #d0341f; font-size: 14px; cursor: pointer; }
+  #stopBtn:hover { background: #fdecea; }
 </style>
 </head>
 <body>
@@ -140,6 +143,7 @@ PAGE = """
     <form class="composer" id="form">
       <input type="text" id="question" placeholder="Nhập câu hỏi..." autocomplete="off" required>
       <button type="submit" id="send">Gửi</button>
+      <button type="button" id="stopBtn" style="display:none;">Dừng</button>
     </form>
   </main>
 </div>
@@ -149,8 +153,11 @@ const chatEl = document.getElementById('chat');
 const form = document.getElementById('form');
 const input = document.getElementById('question');
 const send = document.getElementById('send');
+const stopBtn = document.getElementById('stopBtn');
 const historyList = document.getElementById('historyList');
 const newChatBtn = document.getElementById('newChatBtn');
+
+let currentAbortController = null;
 
 const STORE_KEY = 'nl2sql_chat_sessions_v1';
 
@@ -249,12 +256,17 @@ function pushMsg(msg) {
 }
 
 async function ask(question) {
-  input.value = question;
+  if (currentAbortController) return; // dang co 1 cau hoi chay do, khong gui chong
+
   pushMsg({ role: 'user', text: question });
   renderMsg({ role: 'user', text: question });
   chatEl.scrollTop = chatEl.scrollHeight;
   renderSidebar();
-  send.disabled = true;
+
+  input.value = '';
+  input.disabled = true;
+  send.style.display = 'none';
+  stopBtn.style.display = 'inline-block';
 
   const pending = document.createElement('div');
   pending.className = 'msg bot';
@@ -267,12 +279,17 @@ async function ask(question) {
     pending.textContent = 'Đang xử lý... (' + Math.floor((Date.now() - startedAt) / 1000) + 's)';
   }, 1000);
 
+  const controller = new AbortController();
+  currentAbortController = controller;
+
   let botMsg;
+  let stopped = false;
   try {
     const resp = await fetch('/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question})
+      body: JSON.stringify({question}),
+      signal: controller.signal
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
@@ -284,24 +301,40 @@ async function ask(question) {
       botMsg = { role: 'bot', text: data.answer, sql: data.sql, rowCount: data.row_count };
     }
   } catch (e) {
-    // Fetch tu no fail nghia la khong ket noi duoc toi server (server sap/mat mang)
-    botMsg = { role: 'bot', error: true, text: 'Mất kết nối tới server, vui lòng thử lại sau.' };
+    if (e.name === 'AbortError') {
+      stopped = true;
+      botMsg = { role: 'bot', blocked: true, text: 'Đã dừng theo yêu cầu của bạn.' };
+    } else {
+      // Fetch tu no fail nghia la khong ket noi duoc toi server (server sap/mat mang)
+      botMsg = { role: 'bot', error: true, text: 'Mất kết nối tới server, vui lòng thử lại sau.' };
+    }
   }
   clearInterval(tick);
+  currentAbortController = null;
   botMsg.elapsedSec = Math.round((Date.now() - startedAt) / 1000);
   pending.remove();
   pushMsg(botMsg);
   renderMsg(botMsg);
   chatEl.scrollTop = chatEl.scrollHeight;
-  send.disabled = false;
+
+  input.disabled = false;
+  send.style.display = 'inline-block';
+  stopBtn.style.display = 'none';
+  if (stopped) {
+    input.value = question;
+    input.focus();
+  }
 }
+
+stopBtn.addEventListener('click', () => {
+  if (currentAbortController) currentAbortController.abort();
+});
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const q = input.value.trim();
   if (!q) return;
   ask(q);
-  input.value = '';
 });
 
 newChatBtn.addEventListener('click', newSession);
@@ -525,4 +558,6 @@ if __name__ == "__main__":
     # 127.0.0.1 khi chay local (khong Docker).
     host = os.getenv("WEBAPP_HOST", "0.0.0.0")
     debug = os.getenv("WEBAPP_DEBUG", "1") == "1"
-    app.run(host=host, port=5050, debug=debug)
+    # threaded=True: neu 1 request /ask dang bi client huy (nut "Dung") nhung
+    # van con chay ngam o server, request /ask tiep theo khong bi ket lai cho.
+    app.run(host=host, port=5050, debug=debug, threaded=True)

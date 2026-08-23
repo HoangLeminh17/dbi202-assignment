@@ -46,6 +46,37 @@ FEW_SHOT_EXAMPLES = [
         "FROM vw_game_sales_full WHERE game_name = 'FIFA 17' "
         "GROUP BY region_name ORDER BY total_sales DESC;",
     ),
+    (
+        "Game nào bán chạy nhất trên từng nền tảng",
+        "SELECT platform_name, game_name, total_sales FROM (\n"
+        "    SELECT platform_name, game_name, SUM(num_sales) AS total_sales,\n"
+        "           ROW_NUMBER() OVER (PARTITION BY platform_name "
+        "ORDER BY SUM(num_sales) DESC) AS rn\n"
+        "    FROM vw_game_sales_full GROUP BY platform_name, game_name\n"
+        ") t WHERE rn = 1;",
+    ),
+    (
+        "Doanh số thể loại Action theo từng khu vực",
+        "SELECT region_name, SUM(num_sales) AS total_sales "
+        "FROM vw_game_sales_full WHERE genre_name = 'Action' "
+        "GROUP BY region_name ORDER BY total_sales DESC;",
+    ),
+    (
+        "Có bao nhiêu game thuộc thể loại Sports",
+        "SELECT COUNT(DISTINCT game_id) AS so_luong_game "
+        "FROM vw_game_sales_full WHERE genre_name = 'Sports';",
+    ),
+    (
+        "So sánh doanh số giữa XOne và PS4 theo từng năm",
+        "SELECT release_year, platform_name, SUM(num_sales) AS total_sales "
+        "FROM vw_game_sales_full WHERE platform_name IN ('XOne', 'PS4') "
+        "GROUP BY release_year, platform_name ORDER BY release_year;",
+    ),
+    (
+        "Game nào bán chạy nhất mọi thời đại",
+        "SELECT TOP 1 game_name, SUM(num_sales) AS total_sales "
+        "FROM vw_game_sales_full GROUP BY game_name ORDER BY total_sales DESC;",
+    ),
 ]
 
 
