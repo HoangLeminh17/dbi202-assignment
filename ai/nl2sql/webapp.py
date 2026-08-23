@@ -356,6 +356,7 @@ ADMIN_PAGE = """
 <html lang="vi">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="refresh" content="45">
 <title>Admin monitor - NL2SQL Agent</title>
 <style>
   body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 1200px;
@@ -365,6 +366,21 @@ ADMIN_PAGE = """
   .stat { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 12px 18px; }
   .stat .num { font-size: 22px; font-weight: 700; }
   .stat .label { font-size: 12px; color: #666; }
+  .dashboard { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
+  .donut-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 16px 20px;
+                display: flex; align-items: center; gap: 20px; }
+  .donut-card h2 { font-size: 13px; margin: 0 0 0 0; color: #52514e; font-weight: 600; }
+  .donut-wrap { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+  .donut { width: 140px; height: 140px; border-radius: 50%; }
+  .donut-hole { position: absolute; inset: 22px; background: white; border-radius: 50%;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .donut-hole .n { font-size: 22px; font-weight: 700; color: #0b0b0b; }
+  .donut-hole .l { font-size: 10px; color: #898781; }
+  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .legend .name { color: #1f2430; }
+  .legend .count { color: #898781; margin-left: auto; padding-left: 14px; font-variant-numeric: tabular-nums; }
   table { width: 100%; border-collapse: collapse; background: white; font-size: 12.5px; }
   th, td { border: 1px solid #e2e2e2; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #f0f2f5; position: sticky; top: 0; }
@@ -379,11 +395,33 @@ ADMIN_PAGE = """
 </head>
 <body>
   <h1>Admin monitor - NL2SQL Agent (Group7 Video Game Sales)</h1>
-  <div class="toolbar"><a href="/">&larr; Về trang chat</a> &middot; <a href="/admin">Làm mới</a></div>
+  <div class="toolbar"><a href="/">&larr; Về trang chat</a> &middot; <a href="/admin">Làm mới</a> &middot; tự làm mới mỗi 45s</div>
   <div class="stats">
     <div class="stat"><div class="num">{{ stats.total }}</div><div class="label">Tổng số câu hỏi</div></div>
     <div class="stat"><div class="num">{{ stats.blocked }}</div><div class="label">Bị chặn (guardrail/validator)</div></div>
     <div class="stat"><div class="num">{{ stats.avg_ms }} ms</div><div class="label">Thời gian xử lý trung bình (câu thành công)</div></div>
+  </div>
+  <div class="dashboard">
+    <div class="donut-card">
+      <div class="donut-wrap">
+        <div class="donut" style="background: {{ donut_gradient }};" role="img"
+             aria-label="Tỷ lệ request theo trạng thái"></div>
+        <div class="donut-hole"><div class="n">{{ donut_total }}</div><div class="l">request</div></div>
+      </div>
+      <div class="legend">
+        {% if donut_slices %}
+          {% for s in donut_slices %}
+          <div class="row">
+            <span class="swatch" style="background: {{ s.color }};"></span>
+            <span class="name">{{ s.label }}</span>
+            <span class="count">{{ s.count }} ({{ s.pct }}%)</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="row"><span class="name">Chưa có dữ liệu.</span></div>
+        {% endif %}
+      </div>
+    </div>
   </div>
   <table>
     <thead>
@@ -422,12 +460,57 @@ ADMIN_PAGE = """
 """
 
 
+# Thu tu + mau co dinh (bang mau categorical/status da validate, tranh cap
+# cam/vang bi canh bao fail o che do all-pairs - xem NL2SQL_ARCHITECTURE.md).
+STATUS_META = [
+    ("ok", "Thành công", "#008300"),
+    ("input_guardrail", "Chặn injection (input)", "#2a78d6"),
+    ("llm_not_applicable", "Ngoài phạm vi (LLM tự chặn)", "#eb6834"),
+    ("sql_validator", "SQL không hợp lệ", "#1baf7a"),
+    ("output_guardrail", "Chặn hallucination (output)", "#4a3aa7"),
+    ("service_error", "Lỗi hạ tầng (timeout/mất kết nối)", "#e34948"),
+]
+
+
+def _build_donut():
+    counts = {r["status"]: r["count"] for r in logging_store.fetch_status_breakdown()}
+    total = sum(counts.values())
+
+    slices = []
+    for status, label, color in STATUS_META:
+        n = counts.get(status, 0)
+        if n:
+            slices.append(
+                {"status": status, "label": label, "color": color, "count": n,
+                 "pct": round(n / total * 100, 1) if total else 0}
+            )
+
+    stops = []
+    angle = 0.0
+    for s in slices:
+        start, end = angle, angle + (s["count"] / total * 360 if total else 0)
+        stops.append(f"{s['color']} {start:.2f}deg {end:.2f}deg")
+        angle = end
+    gradient_css = (
+        "conic-gradient(" + ", ".join(stops) + ")" if stops else "#e1e0d9"
+    )
+    return slices, gradient_css, total
+
+
 @app.route("/admin")
 @require_admin_auth
 def admin():
     logs = logging_store.fetch_recent(limit=200)
     stats = logging_store.fetch_stats()
-    return render_template_string(ADMIN_PAGE, logs=logs, stats=stats)
+    donut_slices, donut_gradient, donut_total = _build_donut()
+    return render_template_string(
+        ADMIN_PAGE,
+        logs=logs,
+        stats=stats,
+        donut_slices=donut_slices,
+        donut_gradient=donut_gradient,
+        donut_total=donut_total,
+    )
 
 
 if __name__ == "__main__":

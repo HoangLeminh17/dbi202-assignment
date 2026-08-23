@@ -81,3 +81,24 @@ def fetch_stats() -> dict:
         return {"total": total, "blocked": blocked, "avg_ms": round(avg_ms or 0)}
     finally:
         conn.close()
+
+
+def fetch_status_breakdown() -> list:
+    """Đếm số request theo trạng thái - phục vụ biểu đồ tròn trên /admin.
+
+    'OK' gộp mọi request không bị chặn (block_stage NULL); các trạng thái còn
+    lại lấy nguyên block_stage đã ghi trong agent.py (input_guardrail,
+    llm_not_applicable, sql_validator, output_guardrail, service_error).
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT COALESCE(block_stage, 'ok') AS status, COUNT(*) AS n
+            FROM request_logs
+            GROUP BY status
+            """
+        ).fetchall()
+        return [{"status": r[0], "count": r[1]} for r in rows]
+    finally:
+        conn.close()
