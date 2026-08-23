@@ -1,7 +1,15 @@
 """Guardrail input/output - lớp bảo vệ đơn giản, đủ dùng cho demo nội bộ.
 
-Sản xuất thật cần thêm: intent classifier bằng model riêng, rate limit theo
-user/IP, và grounding check chặt chẽ hơn (xem ai/NL2SQL_ARCHITECTURE.md mục 4).
+Lọc domain (câu hỏi có thuộc chủ đề doanh số game hay không) được giao cho
+chính LLM quyết định qua system prompt (xem llm_client.NOT_APPLICABLE) thay
+vì so khớp từ khóa - từ khóa tĩnh dễ chặn nhầm câu hỏi diễn đạt khác thường
+(vd không dùng đúng từ trong danh sách) trong khi LLM hiểu ngữ nghĩa tốt hơn
+nhiều. check_input() ở đây chỉ giữ lại việc chặn prompt injection, vì đó vẫn
+là ranh giới bảo mật cần chặn TRƯỚC khi gọi LLM (không thể giao cho LLM tự
+xử lý an toàn).
+
+Sản xuất thật cần thêm: rate limit theo user/IP, và grounding check chặt chẽ
+hơn (xem ai/NL2SQL_ARCHITECTURE.md mục 4).
 """
 import re
 import unicodedata
@@ -19,16 +27,6 @@ INJECTION_PATTERNS = [
     r";\s*--",
 ]
 
-DOMAIN_KEYWORDS = [
-    # Tiếng Việt (có/không dấu đều so khớp được nhờ _strip_accents)
-    "trò chơi", "game", "doanh số", "doanh thu", "bán chạy", "bán", "xếp hạng",
-    "thống kê", "xu hướng", "nhà phát hành", "phát hành", "thể loại",
-    "nền tảng", "khu vực", "vùng", "năm", "top",
-    # English
-    "video game", "sales", "revenue", "best-selling", "best selling",
-    "publisher", "genre", "platform", "region", "year", "trend", "ranking",
-]
-
 
 def _strip_accents(text: str) -> str:
     """Bỏ dấu tiếng Việt để so khớp được cả câu hỏi gõ có dấu lẫn không dấu."""
@@ -44,18 +42,12 @@ class GuardrailError(Exception):
 
 
 def check_input(question: str) -> None:
-    """Chặn prompt injection và câu hỏi ngoài domain (business: video game sales)."""
+    """Chặn prompt injection. Lọc domain do LLM tự quyết định (xem module docstring)."""
     lowered = _strip_accents(question.lower())
 
     for pattern in INJECTION_PATTERNS:
         if re.search(_strip_accents(pattern), lowered):
             raise GuardrailError(f"Phát hiện pattern nghi injection: '{pattern}'")
-
-    if not any(_strip_accents(kw) in lowered for kw in DOMAIN_KEYWORDS):
-        raise GuardrailError(
-            "Câu hỏi không thuộc phạm vi dữ liệu doanh số game (genre/platform/"
-            "publisher/region/năm)."
-        )
 
 
 def check_output(answer_text: str, sql: str, result_values: list) -> None:

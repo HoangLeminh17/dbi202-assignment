@@ -43,6 +43,12 @@ def ask(question: str) -> AgentResult:
     raw_sql = llm_client.generate_sql(question)
     logger.info("LLM sinh SQL: %s", raw_sql)
 
+    if raw_sql.strip().upper() == llm_client.NOT_APPLICABLE:
+        logger.warning("LLM đánh giá câu hỏi ngoài phạm vi dữ liệu")
+        result.blocked = True
+        result.reason = "Câu hỏi không thể trả lời bằng dữ liệu doanh số game (do LLM đánh giá)."
+        return result
+
     try:
         safe_sql = validate_and_enforce_limit(raw_sql, max_rows=CONFIG.max_rows)
     except SQLValidationError as exc:

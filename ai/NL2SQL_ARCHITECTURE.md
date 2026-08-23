@@ -67,11 +67,17 @@ tắc tối thiểu hoá:
 
 **Input** (`guardrails.check_input`):
 - Regex chặn injection (`ignore previous instructions`, `DROP TABLE`,
-  `xp_cmdshell`...) - `INJECTION_PATTERNS`.
-- Lọc theo domain keyword (game/doanh số/publisher/genre/platform/region/năm) -
-  từ chối câu hỏi ngoài phạm vi.
-- *Chưa làm (production)*: intent classifier bằng model riêng, rate limit
-  theo user/IP.
+  `xp_cmdshell`...) - `INJECTION_PATTERNS`. Đây là ranh giới bảo mật phải chặn
+  **trước khi** gọi LLM, không thể giao cho LLM tự xử lý an toàn.
+- **Lọc domain (câu hỏi có thuộc chủ đề doanh số game không) do chính LLM
+  quyết định**, không dùng keyword-matching tĩnh: system prompt trong
+  `llm_client.py` yêu cầu LLM trả về đúng token `NOT_APPLICABLE` nếu câu hỏi
+  ngoài phạm vi/yêu cầu sửa-xoá dữ liệu/injection. `agent.py` kiểm tra token
+  này trước khi đưa SQL vào validator. Lý do đổi từ keyword-matching: danh
+  sách từ khóa tĩnh dễ chặn nhầm câu hỏi diễn đạt khác thường (vd hỏi thuần
+  Việt không dùng đúng từ trong danh sách), trong khi LLM hiểu ngữ nghĩa tốt
+  hơn nhiều và không cần bảo trì danh sách từ khóa.
+- *Chưa làm (production)*: rate limit theo user/IP.
 
 **SQL Validator** (`sql_validator.validate_and_enforce_limit`, lớp quan trọng
 nhất):
@@ -139,7 +145,7 @@ validate, số dòng kết quả, lý do bị guardrail chặn). Đây là nền
 | Schema-as-context + few-shot | Đã cài đặt (`schema.py`) |
 | Semantic view whitelist | Đã cài đặt (`sql/hoang/08_nl2sql_view.sql`) |
 | SQL Validator (AST, whitelist, auto-limit) | Đã cài đặt (`sql_validator.py`) |
-| Guardrail input (injection + domain filter) | Đã cài đặt (`guardrails.py`) |
+| Guardrail input (injection filter + domain check qua LLM) | Đã cài đặt (`guardrails.py` + `llm_client.NOT_APPLICABLE`) |
 | Guardrail output (grounding check cơ bản) | Đã cài đặt (`guardrails.py`) |
 | Log pipeline | Đã cài đặt (module `logging`) |
 | Intent classifier riêng, rate limit, cost estimate/EXPLAIN | Hướng phát triển |
