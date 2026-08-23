@@ -145,6 +145,18 @@ code, mô tả để tham khảo khi mở rộng):
   (đo được qua cột "DB exec" trên `/admin`) do bắt tay với named instance qua
   SQL Browser không ổn định - sửa bằng cách tái sử dụng 1 connection cho cả
   tiến trình, giảm còn ~vài chục-vài trăm ms.
+- **Bug thật thứ 2** (vẫn qua cột "DB exec"): database `Group7` đang test
+  hoàn toàn **không có index** ngoài khoá chính (kể cả `region_sales` - bảng
+  lớn nhất, 65,320 dòng, trung tâm mọi JOIN trong `vw_game_sales_full` - là
+  HEAP không index) - mỗi câu hỏi phải quét toàn bộ 8 bảng. Đo trực tiếp bằng
+  `SET STATISTICS TIME ON`: `MAX(release_year)` qua view mất **8.6 giây**
+  (so với 3ms nếu query thẳng 1 bảng không qua join) - vượt luôn
+  `QUERY_TIMEOUT_SECONDS=10`. Đã thêm index cho các cột FK dùng để JOIN
+  (`sql/hoang/09_indexes.sql`) - cùng câu hỏi đó sau khi index "ấm" cache còn
+  **67ms** (nhanh hơn ~130 lần). Lưu ý: `region_sales` có 16 cặp
+  `(region_id, game_platform_id)` trùng lặp nên chưa thêm được PRIMARY KEY/
+  UNIQUE (sẽ báo lỗi) - chỉ thêm index thường, việc xử lý trùng lặp là quyết
+  định nghiệp vụ/ràng buộc dữ liệu, không tự ý xoá.
 - **Biểu đồ tròn (donut, CSS conic-gradient)** trên `/admin` thể hiện tỷ lệ 3
   nhóm trạng thái: Thành công / Bị chặn theo thiết kế (gộp cả 4 loại guardrail
   và validator) / Lỗi hạ tầng - tự làm mới mỗi 45s. Ban đầu thử tách riêng

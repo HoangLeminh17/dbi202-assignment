@@ -111,18 +111,12 @@ PAGE = """
            color: white; font-size: 14px; cursor: pointer; }
   button[type=submit]:hover { background: var(--accent-dark); }
   button:disabled { background: #a8adba !important; cursor: default; }
-
-  @media print {
-    .sidebar, .composer, .examples, .ghost-btn { display: none !important; }
-    .app, .main, #chat { height: auto; overflow: visible; }
-    .msg { break-inside: avoid; }
-  }
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">NL2SQL Agent</div>
+    <div class="brand">Chatbot nội bộ G7 - Video game sales</div>
     <button class="new-chat-btn" id="newChatBtn">+ Đoạn chat mới</button>
     <div class="history-label">Lịch sử</div>
     <div class="history-list" id="historyList"></div>
@@ -132,7 +126,6 @@ PAGE = """
   <main class="main">
     <div class="topbar">
       <h1>Group7 Video Game Sales <span class="sub">- demo nội bộ, không public</span></h1>
-      <button class="ghost-btn" id="exportBtn">Xuất PDF</button>
     </div>
     <div class="examples">
       Ví dụ:
@@ -158,7 +151,6 @@ const input = document.getElementById('question');
 const send = document.getElementById('send');
 const historyList = document.getElementById('historyList');
 const newChatBtn = document.getElementById('newChatBtn');
-const exportBtn = document.getElementById('exportBtn');
 
 const STORE_KEY = 'nl2sql_chat_sessions_v1';
 
@@ -221,10 +213,13 @@ function renderMsg(m) {
     pre.textContent = m.sql;
     div.appendChild(pre);
   }
-  if (m.role === 'bot' && !m.blocked && !m.error && m.rowCount !== undefined) {
+  if (m.role === 'bot' && m.elapsedSec !== undefined) {
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = m.rowCount + ' dòng kết quả';
+    const parts = [];
+    if (!m.blocked && !m.error && m.rowCount !== undefined) parts.push(m.rowCount + ' dòng kết quả');
+    parts.push('trả lời sau ' + m.elapsedSec + 's');
+    meta.textContent = parts.join(' · ');
     div.appendChild(meta);
   }
   chatEl.appendChild(div);
@@ -293,6 +288,7 @@ async function ask(question) {
     botMsg = { role: 'bot', error: true, text: 'Mất kết nối tới server, vui lòng thử lại sau.' };
   }
   clearInterval(tick);
+  botMsg.elapsedSec = Math.round((Date.now() - startedAt) / 1000);
   pending.remove();
   pushMsg(botMsg);
   renderMsg(botMsg);
@@ -309,7 +305,6 @@ form.addEventListener('submit', (e) => {
 });
 
 newChatBtn.addEventListener('click', newSession);
-exportBtn.addEventListener('click', () => window.print());
 
 if (!store.order.length) { newSession(); } else { renderSidebar(); renderChat(); }
 </script>

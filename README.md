@@ -23,7 +23,8 @@ dbi202-assignment/
 ├── sql/                     # File .sql, tách theo từng người phụ trách
 │   ├── hoang/
 │   │   ├── 04_queries.sql       # Các câu query yêu cầu + query insight
-│   │   └── 08_nl2sql_view.sql   # View vw_game_sales_full cho NL2SQL Agent
+│   │   ├── 08_nl2sql_view.sql   # View vw_game_sales_full cho NL2SQL Agent
+│   │   └── 09_indexes.sql       # Index cho cột FK dùng để JOIN (tăng tốc truy vấn)
 │   ├── trung/
 │   │   ├── 01_createDB.sql      # Tạo database + bảng
 │   │   ├── 03_insert.sql        # Dữ liệu mẫu
@@ -129,6 +130,7 @@ dbi202-assignment/
 5. `sql/trung/07_procedure.sql` — stored procedure.
 6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
 7. `sql/hoang/08_nl2sql_view.sql` — tạo view `vw_game_sales_full` (cần cho NL2SQL Agent).
+8. `sql/hoang/09_indexes.sql` — thêm index cho các cột FK dùng để JOIN, tránh quét toàn bảng khi truy vấn qua view (không có bước này, truy vấn có thể mất hàng chục giây với `region_sales` chưa được index).
 
 > Restore nhanh: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database đầy đủ dữ liệu, rồi chạy tiếp các file còn lại từ bước 3.
 
