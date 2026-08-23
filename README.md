@@ -36,18 +36,18 @@ dbi202-assignment/
 ├── slide-report/                # Bản nộp cuối cùng
 │   ├── Report.docx          # Báo cáo (đang trống, Hoàng tổng hợp)
 │   └── Slide.pptx           # Slide thuyết trình (đang trống, Hoàng tổng hợp)
-├── erd-dictionary/          # Tai lieu thiet ke (Hoàng phu trach)
-│   ├── ERD.md               # So do ER (ky hieu Chen) + giai thich quan he giua cac entity
+├── erd-dictionary/          # Tài liệu thiết kế (Hoàng phụ trách)
+│   ├── ERD.md               # Sơ đồ ER (ký hiệu Chen) + giải thích quan hệ giữa các entity
 │   ├── ERD.svg               # Sơ đồ ER dạng vector (nguồn, chỉnh sửa được)
 │   ├── ERD.jpg               # Sơ đồ ER xuất sẵn dạng ảnh (chèn thẳng vào báo cáo)
-│   └── DataDictionary.md    # Dac ta yeu cau du lieu (data dictionary) cho tung thuoc tinh
+│   └── DataDictionary.md    # Đặc tả yêu cầu dữ liệu (data dictionary) cho từng thuộc tính
 ├── ai/                      # Phần mở rộng ứng dụng AI (Hoàng code/dev)
-│   ├── recommend.py         # Script goi y game tuong tu (content-based, dung genre/publisher/platform)
-│   └── requirements.txt     # Thu vien Python can cai (pyodbc, pandas, scikit-learn)
-└── web/                     # Web demo noi AI + SQL lai voi nhau (Trung code/dev)
-    ├── app.py               # Flask app: trang danh sach game + trang goi y (goi ai/recommend.py)
+│   ├── recommend.py         # Script gợi ý game tương tự (content-based, dùng genre/publisher/platform)
+│   └── requirements.txt     # Thư viện Python cần cài (pyodbc, pandas, scikit-learn)
+└── web/                     # Web demo nối AI + SQL lại với nhau (Trung code/dev)
+    ├── app.py               # Flask app: trang danh sách game + trang gợi ý (gọi ai/recommend.py)
     ├── templates/           # index.html, recommend.html
-    └── requirements.txt     # Thu vien Python can cai (flask, pyodbc, pandas, scikit-learn)
+    └── requirements.txt     # Thư viện Python cần cài (flask, pyodbc, pandas, scikit-learn)
 ```
 
 ## Yêu cầu đề bài (tổng hợp từ `yeu-cau-assignment/Assignment1.docx` và `yeu-cau-assignment/Assignment2.docx`)
@@ -68,7 +68,7 @@ dbi202-assignment/
 ## Yêu cầu bên lề (theo ảnh nhóm trưởng gửi)
 
 - File SQL (theo cấu trúc trong `sql/`).
-- File `.docx` báo cáo (`slide-report/Report.docx`): bìa, mục lục, danh mục hình vẽ, bảng biểu - Đặt vấn đề - Các bước giải quyết vấn đề - Kết luận, hướng phát triển - Tỷ lệ đóng góp mỗi thành viên.
+- File `.docx` báo cáo (`slide-report/Report.docx`), **độ dài 8-10 trang**: bìa, mục lục, danh mục hình vẽ, bảng biểu - Đặt vấn đề - Các bước giải quyết vấn đề - Kết luận, hướng phát triển - Tỷ lệ đóng góp mỗi thành viên.
 - File PowerPoint thuyết trình (`slide-report/Slide.pptx`).
 - Mỗi nhóm có nhóm trưởng; nhóm trưởng đại diện gửi mail assignment, CC các thành viên trong nhóm.
 
