@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ game.game_name }}{% endblock %}
+
+{% block content %}
+<a href="/games" class="back-link animate-in">← Quay lại danh sách</a>
+
+<div class="page-header animate-in">
+  <h1>{{ game.game_name }}</h1>
+  <p>Chi tiết game và doanh số theo khu vực</p>
+</div>
+
+<div class="game-detail-grid">
+  <div class="detail-section animate-in">
+    <h3>📋 Thông tin chung</h3>
+    <div class="detail-row">
+      <span class="detail-label">Game ID</span>
+      <span class="detail-value">#{{ game.game_id }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Tên game</span>
+      <span class="detail-value">{{ game.game_name }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Thể loại</span>
+      <span class="badge badge-genre" style="font-size:0.85rem;">{{ game.genre_name }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Tổng doanh số</span>
+      <span class="badge badge-sales" style="font-size:0.95rem;">{{ "%.2f"|format(game.total_sales) }} triệu</span>
+    </div>
+  </div>
+
+  <div class="detail-section animate-in">
+    <h3>🤖 AI Gợi ý</h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+      Tìm game tương tự dựa trên đặc trưng (genre, publisher, platform)
+    </p>
+    <a href="/recommend/{{ game.game_id }}" class="btn btn-primary" style="width: 100%;">
+      🤖 Xem gợi ý game tương tự
+    </a>
+  </div>
+</div>
+
+{% if publishers|length > 0 %}
+<div class="detail-section animate-in" style="margin-bottom: 1.5rem;">
+  <h3>🏢 Nhà phát hành & Nền tảng</h3>
+  <div class="table-wrapper" style="border: none;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nhà phát hành</th>
+          <th>Nền tảng</th>
+          <th>Năm phát hành</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in publishers %}
+        <tr>
+          <td><span class="badge badge-publisher">{{ p.publisher_name }}</span></td>
+          <td><span class="badge badge-platform">{{ p.platform_name or '—' }}</span></td>
+          <td style="color: var(--text-secondary);">{{ p.release_year or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if sales|length > 0 %}
+<div class="detail-section animate-in">
+  <h3>💰 Doanh số theo khu vực</h3>
+  <div class="table-wrapper" style="border: none;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Khu vực</th>
+          <th>Nền tảng</th>
+          <th>Doanh số (triệu)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sales %}
+        <tr>
+          <td><span class="badge badge-region">{{ s.region_name }}</span></td>
+          <td><span class="badge badge-platform">{{ s.platform_name or '—' }}</span></td>
+          <td><span class="badge badge-sales">{{ "%.2f"|format(s.num_sales) }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

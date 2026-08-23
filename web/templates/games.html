@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Games{% endblock %}
+
+{% block content %}
+<div class="page-header animate-in">
+  <h1>🎯 Danh sách Games</h1>
+  <p>Tìm kiếm và quản lý danh sách game trong cơ sở dữ liệu</p>
+</div>
+
+<form class="search-bar animate-in" method="get" action="/games">
+  <input type="text" name="q" value="{{ keyword or '' }}" placeholder="🔍 Tìm kiếm theo tên game...">
+  <select name="genre">
+    <option value="">-- Tất cả thể loại --</option>
+    {% for g in genres %}
+    <option value="{{ g.id }}" {{ 'selected' if genre_id == g.id }}>{{ g.genre_name }}</option>
+    {% endfor %}
+  </select>
+  <select name="platform">
+    <option value="">-- Tất cả nền tảng --</option>
+    {% for p in platforms %}
+    <option value="{{ p.id }}" {{ 'selected' if platform_id == p.id }}>{{ p.platform_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+</form>
+
+{% if games|length > 0 %}
+<div class="table-wrapper animate-in">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tên game</th>
+        <th>Thể loại</th>
+        <th>Nhà phát hành</th>
+        <th>Nền tảng</th>
+        <th>Năm</th>
+        <th>Doanh số (triệu)</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in games %}
+      <tr>
+        <td style="color: var(--text-muted);">{{ loop.index + offset }}</td>
+        <td>
+          <a href="/game/{{ g.game_id }}" style="color: var(--text-primary); font-weight: 600;">{{ g.game_name }}</a>
+        </td>
+        <td><span class="badge badge-genre">{{ g.genre_name or '—' }}</span></td>
+        <td><span class="badge badge-publisher">{{ g.publisher_name or '—' }}</span></td>
+        <td><span class="badge badge-platform">{{ g.platform_name or '—' }}</span></td>
+        <td style="color: var(--text-secondary);">{{ g.release_year or '—' }}</td>
+        <td><span class="badge badge-sales">{{ "%.2f"|format(g.total_sales) }}</span></td>
+        <td style="white-space: nowrap;">
+          <a href="/recommend/{{ g.game_id }}" class="btn btn-secondary btn-sm">🤖 AI</a>
+          <a href="/delete/{{ g.game_id }}" class="btn btn-danger btn-sm"
+             onclick="return confirm('Xoá game này và toàn bộ dữ liệu liên quan?')">🗑</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+    <a href="/games?page={{ page - 1 }}&q={{ keyword or '' }}&genre={{ genre_id or '' }}&platform={{ platform_id or '' }}">← Trước</a>
+  {% else %}
+    <span class="disabled">← Trước</span>
+  {% endif %}
+
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == page %}
+      <span class="active">{{ p }}</span>
+    {% elif p <= 3 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+      <a href="/games?page={{ p }}&q={{ keyword or '' }}&genre={{ genre_id or '' }}&platform={{ platform_id or '' }}">{{ p }}</a>
+    {% elif p == 4 or p == total_pages - 2 %}
+      <span style="color: var(--text-muted);">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if page < total_pages %}
+    <a href="/games?page={{ page + 1 }}&q={{ keyword or '' }}&genre={{ genre_id or '' }}&platform={{ platform_id or '' }}">Sau →</a>
+  {% else %}
+    <span class="disabled">Sau →</span>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state animate-in">
+  <div class="empty-icon">🎮</div>
+  <h3>Không tìm thấy game nào</h3>
+  <p>Thử thay đổi từ khoá hoặc bộ lọc</p>
+</div>
+{% endif %}
+{% endblock %}

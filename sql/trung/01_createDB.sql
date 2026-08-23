@@ -3,6 +3,7 @@
 -- Phụ trách: Trung (SE)
 -- Contributor: quantl3@fpt.edu.vn (nội dung tách/tham khảo từ ../quantl3/G7_Dbscript.sql)
 -- Mục đích: Tạo database Group7 và các bảng theo mô hình quan hệ (đã chuẩn hoá 3NF)
+-- Đã đối chiếu với mô hình ER cuối cùng (xem erd-dictionary/ERD.md)
 -- ============================================
 
 USE [master]
@@ -15,8 +16,7 @@ GO
 USE [Group7]
 GO
 
--- TODO (Trung): đối chiếu lại với mô hình ER/quan hệ cuối cùng trước khi nộp.
--- Cấu trúc bên dưới tham khảo từ ../quantl3/G7_Dbscript.sql (dataset video game sales).
+-- ========== BẢNG LOOKUP (không phụ thuộc bảng khác) ==========
 
 CREATE TABLE platform (
     id INT PRIMARY KEY,
@@ -37,6 +37,8 @@ CREATE TABLE region (
     id INT PRIMARY KEY,
     region_name VARCHAR(50) NOT NULL
 );
+
+-- ========== BẢNG CHÍNH ==========
 
 CREATE TABLE game (
     id INT PRIMARY KEY,
@@ -70,4 +72,35 @@ CREATE TABLE region_sales (
     CONSTRAINT fk_rs_region FOREIGN KEY (region_id) REFERENCES region(id),
     CONSTRAINT fk_rs_gameplatform FOREIGN KEY (game_platform_id) REFERENCES game_platform(id)
 );
+GO
+
+-- ========== INDEX cho hiệu năng truy vấn ==========
+-- Tạo non-clustered index trên các cột FK thường dùng trong JOIN/WHERE
+-- để tăng tốc các câu query aggregate, join nhiều bảng.
+
+CREATE NONCLUSTERED INDEX ix_game_genre_id
+    ON game (genre_id);
+
+CREATE NONCLUSTERED INDEX ix_game_publisher_game_id
+    ON game_publisher (game_id);
+
+CREATE NONCLUSTERED INDEX ix_game_publisher_publisher_id
+    ON game_publisher (publisher_id);
+
+CREATE NONCLUSTERED INDEX ix_game_platform_game_publisher_id
+    ON game_platform (game_publisher_id);
+
+CREATE NONCLUSTERED INDEX ix_game_platform_platform_id
+    ON game_platform (platform_id);
+
+CREATE NONCLUSTERED INDEX ix_region_sales_game_platform_id
+    ON region_sales (game_platform_id);
+
+-- Index hỗ trợ tìm kiếm game theo tên (dùng trong web demo search)
+CREATE NONCLUSTERED INDEX ix_game_name
+    ON game (game_name);
+
+-- Index hỗ trợ lọc game_platform theo năm phát hành
+CREATE NONCLUSTERED INDEX ix_game_platform_release_year
+    ON game_platform (release_year);
 GO

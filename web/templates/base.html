@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DBI202 Group 7 - Video Game Sales Database Demo">
+  <title>{% block title %}DBI202 Group7{% endblock %} | Video Game Sales</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-brand">
+        <span class="logo-icon">🎮</span>
+        <span>GameDB</span>
+      </a>
+      <ul class="navbar-links">
+        <li><a href="/" class="{{ 'active' if active_page == 'home' }}">📊 Dashboard</a></li>
+        <li><a href="/games" class="{{ 'active' if active_page == 'games' }}">🎯 Games</a></li>
+        <li><a href="/add" class="{{ 'active' if active_page == 'add' }}">➕ Thêm game</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    DBI202 — Nhóm 7 &middot; Video Game Sales Database &middot;
+    <a href="https://github.com" target="_blank">GitHub</a>
+  </footer>
+</body>
+</html>
