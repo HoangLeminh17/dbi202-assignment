@@ -60,7 +60,7 @@ def ask(question: str) -> AgentResult:
 
     flat_values = [v for row in rows for v in row]
     try:
-        check_output(answer, flat_values)
+        check_output(answer, safe_sql, flat_values)
     except GuardrailError as exc:
         logger.warning("Output guardrail block: %s", exc.reason)
         result.blocked, result.reason = True, exc.reason

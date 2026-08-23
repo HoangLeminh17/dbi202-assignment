@@ -45,18 +45,24 @@ def check_input(question: str) -> None:
         )
 
 
-def check_output(answer_text: str, result_values: list) -> None:
-    """Grounding check don gian: moi con so LLM neu ra phai xuat hien trong ket qua SQL.
+def check_output(answer_text: str, sql: str, result_values: list) -> None:
+    """Grounding check don gian: moi con so LLM neu ra phai xuat hien trong ket qua SQL
+    hoac trong chinh cau SQL (vd nam/dieu kien trong WHERE, LLM nhac lai tu cau hoi).
 
-    Day la kiem tra xap xi (so khop chuoi so, khong parse ngu nghia), du de bat
-    hallucination ro rang (LLM tu 'bia' them so lieu khong co trong ket qua truy van).
+    So duoc trich xuat theo substring (khong ep full-string) de khop ca truong hop so
+    nam trong 1 gia tri text (vd game_name = "Yokai Watch 3"). Day la kiem tra xap xi
+    (so khop chuoi so, khong parse ngu nghia), du de bat hallucination ro rang (LLM tu
+    'bia' them so lieu khong co trong ket qua truy van).
     """
     numbers_in_answer = set(re.findall(r"\d+(?:[.,]\d+)?", answer_text))
     if not numbers_in_answer:
         return
 
-    numbers_in_result = {str(v) for v in result_values}
-    ungrounded = [n for n in numbers_in_answer if n not in numbers_in_result]
+    allowed_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", sql))
+    for v in result_values:
+        allowed_numbers.update(re.findall(r"\d+(?:[.,]\d+)?", str(v)))
+
+    ungrounded = [n for n in numbers_in_answer if n not in allowed_numbers]
     if ungrounded:
         raise GuardrailError(
             f"Cau tra loi chua so lieu khong khop ket qua SQL: {ungrounded}"
