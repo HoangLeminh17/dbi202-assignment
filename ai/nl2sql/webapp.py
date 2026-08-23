@@ -65,11 +65,20 @@ PAGE = """
   .history-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase;
                     letter-spacing: .04em; margin: 4px 0 6px; }
   .history-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
-  .history-item { padding: 9px 10px; border-radius: 8px; font-size: 13px; color: var(--text);
-                   cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-                   border: 1px solid transparent; }
+  .history-item { padding: 9px 8px 9px 10px; border-radius: 8px; font-size: 13px; color: var(--text);
+                   cursor: pointer; border: 1px solid transparent;
+                   display: flex; align-items: center; gap: 6px; }
   .history-item:hover { background: #f0f1f5; }
   .history-item.active { background: #eef0fe; border-color: #d9dcfb; color: var(--accent-dark); font-weight: 600; }
+  .history-item .title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-item .title input { width: 100%; border: 1px solid var(--accent); border-radius: 4px;
+                                font: inherit; color: inherit; padding: 1px 4px; background: white; }
+  .history-item .item-actions { display: flex; gap: 2px; opacity: 0; flex-shrink: 0; }
+  .history-item:hover .item-actions { opacity: 1; }
+  .icon-btn { background: none; border: none; padding: 3px; border-radius: 5px; cursor: pointer;
+              color: var(--text-dim); display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn:hover { background: #e2e4ec; color: var(--text); }
+  .icon-btn svg { width: 14px; height: 14px; }
   .sidebar-footer { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
   .sidebar-footer a { font-size: 12px; color: var(--text-dim); text-decoration: none; }
   .sidebar-footer a:hover { color: var(--accent); }
@@ -90,17 +99,22 @@ PAGE = """
                       border-radius: 999px; font-size: 12px; margin: 3px 4px 0 0; cursor: pointer; }
   .examples button:hover { background: #f0f1f5; }
 
-  #chat { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+  #chat { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 4px; }
   .empty-state { color: var(--text-dim); font-size: 13px; text-align: center; margin-top: 60px; }
+  .msg-row { display: flex; flex-direction: column; margin-bottom: 10px; }
+  .msg-row.user-row { align-items: flex-end; }
+  .msg-row.bot-row { align-items: flex-start; }
   .msg { padding: 12px 14px; border-radius: 12px; max-width: 78%; white-space: pre-wrap; line-height: 1.45; }
-  .user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 3px; }
-  .bot { align-self: flex-start; background: var(--panel); border: 1px solid var(--border);
-         border-bottom-left-radius: 3px; }
+  .user { background: var(--accent); color: white; border-bottom-right-radius: 3px; }
+  .bot { background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
   .bot.blocked { border-color: #f0b429; background: #fffbea; }
   .bot.error { border-color: #e5b8a8; background: #fff4ef; }
   .bot .sql { margin-top: 8px; font-family: Consolas, monospace; font-size: 12.5px;
               background: #f2f2f4; padding: 8px; border-radius: 6px; overflow-x: auto; }
   .bot .meta { font-size: 11px; color: #888; margin-top: 6px; }
+  .msg-actions { display: flex; gap: 2px; margin-top: 3px; opacity: 0; transition: opacity .1s; }
+  .msg-row:hover .msg-actions { opacity: 1; }
+  .msg-time { font-size: 10.5px; color: var(--text-dim); padding: 0 4px; align-self: center; }
 
   .composer { flex-shrink: 0; padding: 16px 24px; border-top: 1px solid var(--border);
               background: var(--panel); display: flex; gap: 8px; }
@@ -161,6 +175,29 @@ let currentAbortController = null;
 
 const STORE_KEY = 'nl2sql_chat_sessions_v1';
 
+const ICONS = {
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  retry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+};
+
+function iconBtn(name, title, onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'icon-btn';
+  btn.title = title;
+  btn.innerHTML = ICONS[name];
+  btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+  return btn;
+}
+
+function formatTime(ms) {
+  const d = new Date(ms);
+  return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+}
+
 function loadStore() {
   try {
     return JSON.parse(localStorage.getItem(STORE_KEY)) || { sessions: {}, order: [], currentId: null };
@@ -197,6 +234,27 @@ function switchSession(id) {
   renderChat();
 }
 
+function renameSession(id, title) {
+  const s = store.sessions[id];
+  if (!s) return;
+  s.title = title.trim() || 'Đoạn chat mới';
+  saveStore(store);
+  renderSidebar();
+}
+
+function deleteSession(id) {
+  if (!confirm('Xoá đoạn chat này?')) return;
+  delete store.sessions[id];
+  store.order = store.order.filter((x) => x !== id);
+  if (store.currentId === id) store.currentId = null;
+  saveStore(store);
+  if (!store.order.length) { newSession(); return; }
+  currentSession();
+  saveStore(store);
+  renderSidebar();
+  renderChat();
+}
+
 function renderSidebar() {
   historyList.innerHTML = '';
   for (const id of store.order) {
@@ -204,13 +262,58 @@ function renderSidebar() {
     if (!s) continue;
     const div = document.createElement('div');
     div.className = 'history-item' + (id === store.currentId ? ' active' : '');
-    div.textContent = s.title;
     div.onclick = () => switchSession(id);
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'title';
+    titleEl.textContent = s.title;
+    div.appendChild(titleEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'item-actions';
+    actions.appendChild(iconBtn('edit', 'Đổi tên', () => {
+      titleEl.innerHTML = '';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = s.title;
+      titleEl.appendChild(inp);
+      inp.focus();
+      inp.select();
+      const commit = () => renameSession(id, inp.value);
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { e.preventDefault(); renderSidebar(); }
+      });
+      inp.addEventListener('blur', commit);
+    }));
+    actions.appendChild(iconBtn('trash', 'Xoá đoạn chat', () => deleteSession(id)));
+    div.appendChild(actions);
+
     historyList.appendChild(div);
   }
 }
 
-function renderMsg(m) {
+function editUserMessage(text) {
+  input.value = text;
+  input.focus();
+}
+
+function retryFromBotIndex(index) {
+  if (currentAbortController) return;
+  const s = currentSession();
+  for (let i = index - 1; i >= 0; i--) {
+    if (s.messages[i].role === 'user') { ask(s.messages[i].text); return; }
+  }
+}
+
+function copyText(text) {
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function renderMsg(m, index) {
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (m.role === 'user' ? 'user-row' : 'bot-row');
+
   const div = document.createElement('div');
   div.className = 'msg ' + (m.role === 'user' ? 'user' : ('bot' + (m.error ? ' error' : (m.blocked ? ' blocked' : ''))));
   div.textContent = m.text;
@@ -229,7 +332,25 @@ function renderMsg(m) {
     meta.textContent = parts.join(' · ');
     div.appendChild(meta);
   }
-  chatEl.appendChild(div);
+  row.appendChild(div);
+
+  const actionsRow = document.createElement('div');
+  actionsRow.className = 'msg-actions';
+  if (m.role === 'user') {
+    actionsRow.appendChild(iconBtn('edit', 'Chỉnh sửa', () => editUserMessage(m.text)));
+  } else {
+    actionsRow.appendChild(iconBtn('copy', 'Sao chép', () => copyText(m.text)));
+    actionsRow.appendChild(iconBtn('retry', 'Thử lại', () => retryFromBotIndex(index)));
+  }
+  if (m.timestamp) {
+    const t = document.createElement('span');
+    t.className = 'msg-time';
+    t.textContent = formatTime(m.timestamp);
+    actionsRow.appendChild(t);
+  }
+  row.appendChild(actionsRow);
+
+  chatEl.appendChild(row);
 }
 
 function renderChat() {
@@ -248,6 +369,7 @@ function renderChat() {
 
 function pushMsg(msg) {
   const s = currentSession();
+  msg.timestamp = msg.timestamp || Date.now();
   s.messages.push(msg);
   if (msg.role === 'user' && s.messages.filter(m => m.role === 'user').length === 1) {
     s.title = msg.text.slice(0, 40) + (msg.text.length > 40 ? '...' : '');
@@ -258,8 +380,12 @@ function pushMsg(msg) {
 async function ask(question) {
   if (currentAbortController) return; // dang co 1 cau hoi chay do, khong gui chong
 
-  pushMsg({ role: 'user', text: question });
-  renderMsg({ role: 'user', text: question });
+  const s0 = currentSession();
+  const userMsg = { role: 'user', text: question };
+  pushMsg(userMsg);
+  const emptyState = chatEl.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
+  renderMsg(userMsg, s0.messages.length - 1);
   chatEl.scrollTop = chatEl.scrollHeight;
   renderSidebar();
 
@@ -268,10 +394,13 @@ async function ask(question) {
   send.style.display = 'none';
   stopBtn.style.display = 'inline-block';
 
+  const pendingRow = document.createElement('div');
+  pendingRow.className = 'msg-row bot-row';
   const pending = document.createElement('div');
   pending.className = 'msg bot';
   pending.textContent = 'Đang xử lý... (0s)';
-  chatEl.appendChild(pending);
+  pendingRow.appendChild(pending);
+  chatEl.appendChild(pendingRow);
   chatEl.scrollTop = chatEl.scrollHeight;
 
   const startedAt = Date.now();
@@ -312,9 +441,9 @@ async function ask(question) {
   clearInterval(tick);
   currentAbortController = null;
   botMsg.elapsedSec = Math.round((Date.now() - startedAt) / 1000);
-  pending.remove();
+  pendingRow.remove();
   pushMsg(botMsg);
-  renderMsg(botMsg);
+  renderMsg(botMsg, currentSession().messages.length - 1);
   chatEl.scrollTop = chatEl.scrollHeight;
 
   input.disabled = false;
