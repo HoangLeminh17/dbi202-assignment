@@ -116,6 +116,17 @@ PAGE = """
   .msg-row:hover .msg-actions { opacity: 1; }
   .msg-time { font-size: 10.5px; color: var(--text-dim); padding: 0 4px; align-self: center; }
 
+  .edit-box { width: 100%; max-width: 78%; align-self: flex-end; }
+  .edit-box textarea { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--accent);
+                        font: inherit; font-size: 14px; resize: vertical; box-sizing: border-box; }
+  .edit-box textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .edit-btn-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+  .edit-cancel-btn, .edit-save-btn { padding: 6px 14px; border-radius: 7px; font-size: 12.5px; cursor: pointer; }
+  .edit-cancel-btn { background: none; border: 1px solid var(--border); color: var(--text); }
+  .edit-cancel-btn:hover { background: #f0f1f5; }
+  .edit-save-btn { background: var(--accent); border: none; color: white; }
+  .edit-save-btn:hover { background: var(--accent-dark); }
+
   .composer { flex-shrink: 0; padding: 16px 24px; border-top: 1px solid var(--border);
               background: var(--panel); display: flex; gap: 8px; }
   input[type=text] { flex: 1; padding: 12px 14px; border-radius: 9px; border: 1px solid #d0d3da;
@@ -293,16 +304,19 @@ function renderSidebar() {
   }
 }
 
-function editUserMessage(text) {
-  input.value = text;
-  input.focus();
-}
-
 function retryFromBotIndex(index) {
   if (currentAbortController) return;
   const s = currentSession();
   for (let i = index - 1; i >= 0; i--) {
-    if (s.messages[i].role === 'user') { ask(s.messages[i].text); return; }
+    if (s.messages[i].role === 'user') {
+      const question = s.messages[i].text;
+      s.messages.splice(i); // bo cau hoi + cau tra loi cu, sinh lai ngay tai cho nay
+      saveStore(store);
+      renderChat();
+      renderSidebar();
+      ask(question);
+      return;
+    }
   }
 }
 
@@ -310,9 +324,68 @@ function copyText(text) {
   if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
 }
 
+let editingIndex = null;
+
+function startEdit(index) {
+  editingIndex = index;
+  renderChat();
+  const ta = chatEl.querySelector('.edit-box textarea');
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+function cancelEdit() {
+  editingIndex = null;
+  renderChat();
+}
+
+function saveEdit(index, newText) {
+  newText = newText.trim();
+  if (!newText) return;
+  editingIndex = null;
+  const s = currentSession();
+  s.messages.splice(index); // bo tin nhan nay + moi thu sau no (cau tra loi cu da het gia tri)
+  saveStore(store);
+  renderChat();
+  renderSidebar();
+  ask(newText); // chay lai ngay voi prompt da sua
+}
+
 function renderMsg(m, index) {
   const row = document.createElement('div');
   row.className = 'msg-row ' + (m.role === 'user' ? 'user-row' : 'bot-row');
+
+  if (m.role === 'user' && index === editingIndex) {
+    const box = document.createElement('div');
+    box.className = 'edit-box';
+    const ta = document.createElement('textarea');
+    ta.value = m.text;
+    ta.rows = Math.min(6, Math.max(2, Math.ceil(m.text.length / 40)));
+    box.appendChild(ta);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'edit-btn-row';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'edit-cancel-btn';
+    cancelBtn.textContent = 'Huỷ';
+    cancelBtn.addEventListener('click', cancelEdit);
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'edit-save-btn';
+    saveBtn.textContent = 'Lưu & chạy lại';
+    saveBtn.addEventListener('click', () => saveEdit(index, ta.value));
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(index, ta.value); }
+      if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+    });
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    box.appendChild(btnRow);
+
+    row.appendChild(box);
+    chatEl.appendChild(row);
+    return;
+  }
 
   const div = document.createElement('div');
   div.className = 'msg ' + (m.role === 'user' ? 'user' : ('bot' + (m.error ? ' error' : (m.blocked ? ' blocked' : ''))));
@@ -337,7 +410,7 @@ function renderMsg(m, index) {
   const actionsRow = document.createElement('div');
   actionsRow.className = 'msg-actions';
   if (m.role === 'user') {
-    actionsRow.appendChild(iconBtn('edit', 'Chỉnh sửa', () => editUserMessage(m.text)));
+    actionsRow.appendChild(iconBtn('edit', 'Chỉnh sửa', () => startEdit(index)));
   } else {
     actionsRow.appendChild(iconBtn('copy', 'Sao chép', () => copyText(m.text)));
     actionsRow.appendChild(iconBtn('retry', 'Thử lại', () => retryFromBotIndex(index)));
