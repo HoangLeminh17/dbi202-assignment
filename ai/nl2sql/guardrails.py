@@ -55,17 +55,23 @@ def check_output(answer_text: str, sql: str, result_values: list) -> None:
     hoặc trong chính câu SQL (vd năm/điều kiện trong WHERE, LLM nhắc lại từ câu hỏi).
 
     Số được trích xuất theo substring (không ép full-string) để khớp cả trường hợp số
-    nằm trong 1 giá trị text (vd game_name = "Yokai Watch 3"). Đây là kiểm tra xấp xỉ
+    nằm trong 1 giá trị text (vd game_name = "Yokai Watch 3"). Dấu phẩy thập phân kiểu
+    Việt (vd "1,27") được chuẩn hoá về dấu chấm trước khi so sánh, vì LLM có thể viết
+    số theo kiểu Việt trong khi dữ liệu SQL luôn dùng dấu chấm. Đây là kiểm tra xấp xỉ
     (so khớp chuỗi số, không parse ngữ nghĩa), đủ để bắt hallucination rõ ràng (LLM tự
     "bịa" thêm số liệu không có trong kết quả truy vấn).
     """
-    numbers_in_answer = set(re.findall(r"\d+(?:[.,]\d+)?", answer_text))
+
+    def _normalize(numbers):
+        return {n.replace(",", ".") for n in numbers}
+
+    numbers_in_answer = _normalize(re.findall(r"\d+(?:[.,]\d+)?", answer_text))
     if not numbers_in_answer:
         return
 
-    allowed_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", sql))
+    allowed_numbers = _normalize(re.findall(r"\d+(?:[.,]\d+)?", sql))
     for v in result_values:
-        allowed_numbers.update(re.findall(r"\d+(?:[.,]\d+)?", str(v)))
+        allowed_numbers.update(_normalize(re.findall(r"\d+(?:[.,]\d+)?", str(v))))
 
     ungrounded = [n for n in numbers_in_answer if n not in allowed_numbers]
     if ungrounded:
