@@ -42,7 +42,12 @@ def _generate_anthropic(system, user: str) -> tuple:
         system=system,
         messages=[{"role": "user", "content": user}],
     )
-    return resp.content[0].text, resp.usage
+    # response.content la list nhieu loai block (TextBlock, ThinkingBlock...)
+    # - Claude Sonnet 5 mac dinh co the tu "suy nghi" truoc (adaptive thinking),
+    # nen content[0] khong luon la text. Phai loc theo .type, khong duoc lay
+    # cung content[0].text.
+    text = next((b.text for b in resp.content if b.type == "text"), "")
+    return text, resp.usage
 
 
 def _generate_openai(system, user: str) -> tuple:

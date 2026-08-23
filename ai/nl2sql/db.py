@@ -11,6 +11,13 @@ connection mới tới named instance (qua SQL Browser) có thể mất vài ch�
 mỗi lần và không ổn định (đo được qua trang /admin), nên chỉ mở lại khi
 connection cũ đã chết.
 
+MARS_Connection=yes + autocommit=True: connection tái sử dụng lâu dài dễ dính
+lỗi "Query timeout expired" ngẫu nhiên nếu thiếu MARS (cursor health-check
+"SELECT 1" chưa được đóng/fetch hết trước khi cursor tiếp theo execute() -
+không có MARS thì driver phải chờ, gây timeout dù chính câu SQL đó chạy trực
+tiếp bằng sqlcmd chỉ mất vài chục ms). autocommit=True tránh transaction ngầm
+tích luỹ qua thời gian sống dài của connection (an toàn vì chỉ SELECT).
+
 webapp.py chạy Flask với threaded=True (nhiều request /ask có thể chạy song
 song), nhưng 1 connection pyodbc dùng chung KHÔNG an toàn nếu nhiều thread
 gọi execute() đồng thời trên cùng 1 connection - nên execute_select() khoá
@@ -32,6 +39,11 @@ def _connection_string() -> str:
     base = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
         f"SERVER={CONFIG.db_server};DATABASE={CONFIG.db_name};"
+        # MARS: cho phep nhieu cursor/statement tren cung 1 connection khong
+        # bi ket nhau - thieu dong nay la nguyen nhan that cua timeout ngau
+        # nhien (cursor "SELECT 1" o health-check khong duoc dong truoc khi
+        # cursor tiep theo execute(), driver phai cho ma khong co MARS).
+        "MARS_Connection=yes;"
     )
     if CONFIG.db_readonly_user:
         return base + (
@@ -41,7 +53,9 @@ def _connection_string() -> str:
 
 
 def _new_connection() -> pyodbc.Connection:
-    conn = pyodbc.connect(_connection_string(), timeout=CONFIG.query_timeout_seconds)
+    conn = pyodbc.connect(
+        _connection_string(), timeout=CONFIG.query_timeout_seconds, autocommit=True
+    )
     conn.timeout = CONFIG.query_timeout_seconds  # gioi han thoi gian chay 1 cau query
     return conn
 
@@ -51,7 +65,10 @@ def _get_connection() -> pyodbc.Connection:
     with _lock:
         if _conn is not None:
             try:
-                _conn.cursor().execute("SELECT 1")
+                cur = _conn.cursor()
+                cur.execute("SELECT 1")
+                cur.fetchall()
+                cur.close()
                 return _conn
             except Exception:
                 try:
