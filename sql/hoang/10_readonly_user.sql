@@ -1,5 +1,5 @@
 -- ============================================
--- File: 10_readonly_login.sql
+-- File: 10_readonly_user.sql
 -- Phụ trách: Hoàng (AI)
 -- Mục đích: DB-layer defense-in-depth cho NL2SQL Agent - tạo 1 database user
 -- CHỈ có quyền SELECT trên view vw_game_sales_full, không có quyền gì trên 8
@@ -14,7 +14,7 @@
 -- chạy SQL đã validate thì "đóng vai" user này qua EXECUTE AS USER (xem
 -- db.py execute_select()) - DB thực sự chỉ cho SELECT trên view trong lúc đó.
 --
--- Chạy: sqlcmd -S "localhost\SQLEXPRESS01" -d Group7 -E -C -i sql/hoang/10_readonly_login.sql
+-- Chạy: sqlcmd -S "localhost\SQLEXPRESS01" -d Group7 -E -C -i sql/hoang/10_readonly_user.sql
 -- ============================================
 USE [Group7]
 GO
