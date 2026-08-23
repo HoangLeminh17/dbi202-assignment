@@ -43,6 +43,12 @@ Sau khi chuyển mô hình ER sang mô hình quan hệ (relational model), mỗi
 | `game_platform` | game_platform(**id**, game_publisher_id, platform_id, release_year) | id → game_publisher_id, platform_id, release_year |
 | `region_sales` | region_sales(**region_id, game_platform_id**, num_sales) | (region_id, game_platform_id) → num_sales |
 
+> `region_sales` thực tế có thêm 2 cột kỹ thuật `created_at`/`updated_at`
+> (`sql/hoang/11_freshness_columns.sql`) phục vụ tính năng Data Freshness của
+> NL2SQL Agent - đây là metadata hệ thống (audit trail), không phải thuộc
+> tính nghiệp vụ của quan hệ `Sold_in`, nên cố tình không vẽ trong ERD khái
+> niệm ở trên (chỉ giữ `num_sales`) - chi tiết đầy đủ xem `DataDictionary.md`.
+
 ### Vì sao các bảng đạt chuẩn 3NF
 
 Một lược đồ đạt 3NF khi đã đạt 2NF (không có phụ thuộc bộ phận vào khoá chính) và không tồn tại phụ thuộc bắc cầu (transitive dependency) - tức không có thuộc tính không khoá nào phụ thuộc vào một thuộc tính không khoá khác.

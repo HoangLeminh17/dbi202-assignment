@@ -70,3 +70,5 @@ Doanh số bán của một `game_platform` cụ thể tại một `region` cụ
 | region_sales.region_id | Khu vực ghi nhận doanh số | int (Primary Key, Foreign Key → region.id) | - | phải tồn tại trong bảng region |
 | region_sales.game_platform_id | Bản phát hành theo nền tảng được ghi nhận doanh số | int (Primary Key, Foreign Key → game_platform.id) | - | phải tồn tại trong bảng game_platform |
 | region_sales.num_sales | Doanh số bán (triệu bản) của game_platform này tại region này | decimal | (5,2) | >= 0 (xem ràng buộc `ck_region_sales_nonnegative` trong `sql/vi/02_constraints.sql`) |
+| region_sales.created_at | Thời điểm dòng dữ liệu được ghi nhận | datetime | - | mặc định `GETDATE()`, thêm sau bởi `sql/hoang/11_freshness_columns.sql` |
+| region_sales.updated_at | Thời điểm dòng dữ liệu bị sửa lần gần nhất - phục vụ Data Freshness thật cho NL2SQL Agent (`db.get_data_freshness()`), tự động cập nhật bằng trigger `trg_region_sales_updated` mỗi khi có UPDATE | datetime | - | mặc định `GETDATE()`, thêm sau bởi `sql/hoang/11_freshness_columns.sql` |

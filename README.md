@@ -24,7 +24,9 @@ dbi202-assignment/
 │   ├── hoang/
 │   │   ├── 04_queries.sql       # Các câu query yêu cầu + query insight
 │   │   ├── 08_nl2sql_view.sql   # View vw_game_sales_full cho NL2SQL Agent
-│   │   └── 09_indexes.sql       # Index cho cột FK dùng để JOIN (tăng tốc truy vấn)
+│   │   ├── 09_indexes.sql       # Index cho cột FK dùng để JOIN (tăng tốc truy vấn)
+│   │   ├── 10_readonly_login.sql    # User DB read-only cho NL2SQL Agent (defense-in-depth)
+│   │   └── 11_freshness_columns.sql # created_at/updated_at + trigger cho region_sales (Data Freshness thật)
 │   ├── trung/
 │   │   ├── 01_createDB.sql      # Tạo database + bảng
 │   │   ├── 03_insert.sql        # Dữ liệu mẫu
@@ -103,6 +105,11 @@ dbi202-assignment/
 - Phần "Áp dụng AI" trong báo cáo + slide.
 - Tổng hợp `slide-report/Report.docx`, làm `slide-report/Slide.pptx`, gửi mail assignment (CC nhóm).
 
+Việc phát sinh thêm ngoài phân công ban đầu (đều thuộc mảng AI/Hoàng phụ trách):
+- `sql/hoang/10_readonly_login.sql` — tạo user `nl2sql_readonly` (WITHOUT LOGIN) chỉ có quyền SELECT trên view; `db.py` chạy mọi SQL qua `EXECUTE AS USER` user này, chặn thêm 1 lớp ở phía DB (không chỉ chặn ở code app), không cần đổi cấu hình đăng nhập của SQL Server.
+- `ai/nl2sql/tests/` — test tự động (pytest) cho guardrail + SQL validator, đã bắt được 1 bug thật (regex chặn injection bỏ sót câu "ignore all previous instructions").
+- Tính năng đánh giá câu trả lời (👍/👎) trên khung chat, thống kê ở `/admin`.
+
 **Trung (SE):**
 - Hoàn thiện `sql/trung/01_createDB.sql` và `sql/trung/03_insert.sql` (tách dữ liệu từ `sql/quantl3/G7_Dbscript.sql`).
 - Rà soát khoá chính/khoá ngoại, thêm index cần thiết.
@@ -131,6 +138,8 @@ dbi202-assignment/
 6. `sql/hoang/04_queries.sql` — chạy thử các câu query.
 7. `sql/hoang/08_nl2sql_view.sql` — tạo view `vw_game_sales_full` (cần cho NL2SQL Agent).
 8. `sql/hoang/09_indexes.sql` — thêm index cho các cột FK dùng để JOIN, tránh quét toàn bảng khi truy vấn qua view (không có bước này, truy vấn có thể mất hàng chục giây với `region_sales` chưa được index).
+9. `sql/hoang/10_readonly_login.sql` — tạo user DB read-only cho NL2SQL Agent (defense-in-depth ở tầng DB).
+10. `sql/hoang/11_freshness_columns.sql` — thêm cột `created_at`/`updated_at` + trigger cho `region_sales` (Data Freshness thật, phục vụ `/admin`).
 
 > Restore nhanh: chạy trực tiếp `sql/quantl3/G7_Dbscript.sql` để có database đầy đủ dữ liệu, rồi chạy tiếp các file còn lại từ bước 3.
 
