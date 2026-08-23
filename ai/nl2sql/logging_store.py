@@ -39,19 +39,58 @@ CREATE TABLE IF NOT EXISTS request_logs (
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute(_SCHEMA)
+    # feedback duoc them sau ban dau (CREATE TABLE IF NOT EXISTS khong tu
+    # them cot moi vao bang cu da ton tai) - migrate bang ALTER, bo qua neu
+    # cot da co san.
+    try:
+        conn.execute("ALTER TABLE request_logs ADD COLUMN feedback TEXT")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
-def record(**fields) -> None:
+def record(**fields) -> int:
     conn = _connect()
     try:
         cols = ", ".join(fields.keys())
         placeholders = ", ".join("?" for _ in fields)
-        conn.execute(
+        cur = conn.execute(
             f"INSERT INTO request_logs ({cols}) VALUES ({placeholders})",
             list(fields.values()),
         )
         conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def set_feedback(request_id: int, feedback: str | None) -> bool:
+    """feedback: 'up'/'down' de danh gia, None de bo danh gia (bam lai nut da chon).
+    Tra ve False neu request_id khong ton tai.
+    """
+    if feedback not in ("up", "down", None):
+        raise ValueError(f"feedback không hợp lệ: {feedback}")
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "UPDATE request_logs SET feedback = ? WHERE id = ?", (feedback, request_id)
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def fetch_feedback_stats() -> dict:
+    conn = _connect()
+    try:
+        up = conn.execute(
+            "SELECT COUNT(*) FROM request_logs WHERE feedback = 'up'"
+        ).fetchone()[0]
+        down = conn.execute(
+            "SELECT COUNT(*) FROM request_logs WHERE feedback = 'down'"
+        ).fetchone()[0]
+        return {"up": up, "down": down}
     finally:
         conn.close()
 

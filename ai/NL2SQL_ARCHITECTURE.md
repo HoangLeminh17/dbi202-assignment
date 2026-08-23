@@ -98,8 +98,20 @@ nhất):
 - Whitelist bảng/view (mục 3).
 - Tự động thêm `TOP 100` (`MAX_ROWS` trong `.env`) nếu SQL từ LLM thiếu giới
   hạn số dòng.
-- *Chưa làm (production)*: `EXPLAIN`/cost estimate trước khi chạy, timeout
-  query (đã có tham số `QUERY_TIMEOUT_SECONDS` nhưng cần benchmark thêm).
+- `QUERY_TIMEOUT_SECONDS` (30s) đã benchmark thật (xem "Bug thật thứ 3" ở mục
+  7) - 10s ban đầu quá ngắn so với thời gian chờ memory grant thực tế của SQL
+  Server Express khi máy bị áp lực RAM.
+- **Defense-in-depth ở lớp DB** (`sql/hoang/10_readonly_login.sql`): database
+  user `nl2sql_readonly` (tạo bằng `CREATE USER ... WITHOUT LOGIN` - không cần
+  bật SQL Server mixed-mode auth) chỉ được `GRANT SELECT` trên
+  `vw_game_sales_full`, không có quyền gì trên 8 bảng gốc. `db.py` bọc mọi
+  câu SQL đã validate trong `EXECUTE AS USER = 'nl2sql_readonly' ... REVERT`
+  (try/finally đảm bảo luôn REVERT dù query lỗi/timeout) - nếu app-layer
+  (whitelist ở trên) có lỗ hổng bypass nào đó, DB vẫn tự chặn vì phiên đang
+  chạy dưới quyền không có quyền đọc bảng gốc. Đã test trực tiếp: SELECT trên
+  view thành công, SELECT trên bảng gốc (`region_sales`) bị từ chối đúng như
+  kỳ vọng (`Msg 229 ... SELECT permission was denied`).
+- *Chưa làm (production)*: `EXPLAIN`/cost estimate trước khi chạy.
 
 **Output** (`guardrails.check_output`):
 - Grounding check đơn giản: mọi con số LLM nêu trong câu trả lời phải khớp với
@@ -177,6 +189,60 @@ code, mô tả để tham khảo khi mở rộng):
   an toàn) - nên gộp còn 3 nhóm dùng đúng bộ màu status (good/warning/
   critical), luôn kèm nhãn chữ trong legend. Chi tiết từng loại chặn cụ thể
   vẫn xem đầy đủ ở bảng log.
+- **Bug thật thứ 3**: sau khi đã có index, câu hỏi dạng tổng hợp (ví dụ
+  `GROUP BY game_name ORDER BY SUM(...)`) vẫn thỉnh thoảng timeout. Kiểm tra
+  `sys.dm_exec_requests` thấy session bị treo ở wait type
+  `RESOURCE_SEMAPHORE` (hàng đợi xin cấp bộ nhớ tạm cho bước hash/sort
+  aggregate - khác hẳn với JOIN, index không giúp được bước này). Đo trực
+  tiếp: CPU chỉ 688ms nhưng elapsed time **180 giây** - gần như toàn bộ thời
+  gian là chờ. Nguyên nhân: SQL Server **Express Edition** bị giới hạn cứng
+  buffer pool (~1GB, không phụ thuộc `max server memory`), trong khi RAM
+  trống của máy tại thời điểm đo chỉ còn ~783MB/7930MB do nhiều ứng dụng khác
+  đang chạy. `QUERY_TIMEOUT_SECONDS` cũ để 10s là quá ngắn so với thời gian
+  chờ cấp phát bộ nhớ thực tế trên máy dev bị áp lực RAM - đã tăng mặc định
+  lên 30s (khớp `REQUEST_TIMEOUT_SECONDS` của LLM). Đây là giới hạn tài
+  nguyên máy/edition SQL Server, không phải lỗi thiếu index hay lỗi code.
+- **Bug thật thứ 4**: `/admin` load rất chậm (30s+, có lúc timeout hẳn) dù đã
+  có index. Nguyên nhân: `db.get_data_freshness()` tính `MAX(release_year)`/
+  `COUNT(*)` qua `vw_game_sales_full` (join 8 bảng) - hoàn toàn không cần
+  thiết vì 2 số này chỉ phụ thuộc đúng 1 cột/1 bảng: `MAX(release_year)` nằm
+  sẵn ở `game_platform`, `COUNT(*)` chính là số dòng `region_sales` (JOIN
+  1-nhiều từ `region_sales` lên các bảng dimension không nhân dòng lên, đã
+  verify khớp 65,320 dòng cả 2 cách). Đổi sang truy vấn thẳng 2 bảng gốc:
+  **5ms thay vì 30+ giây** - không cần join nên không cần memory grant lớn,
+  tránh hẳn `RESOURCE_SEMAPHORE`. Thêm cache in-process (TTL 5 phút) cho hàm
+  này vì `/admin` tự refresh mỗi 45s gọi lại y hệt câu hỏi.
+- **Data Freshness - sửa lại đúng bản chất**: bản đầu gộp chung 3 tín hiệu
+  khác nghĩa vào 1 khái niệm "freshness", sai thuật ngữ data engineering:
+  `max_release_year` thực chất là **content coverage** (nội dung phủ tới
+  đâu, không nói lên hệ thống có vừa đồng bộ hay không), `stats_date` chỉ là
+  proxy thô (SQL Server tự update statistics theo ngưỡng ~20% số dòng đổi,
+  hoặc nhảy giả khi ai đó chạy `UPDATE STATISTICS` thủ công dù không ai ghi
+  dữ liệu), `total_rows` thực chất là **completeness check**. Đã sửa tận gốc
+  thay vì tiếp tục dùng proxy: thêm 2 cột thật `region_sales.created_at`/
+  `updated_at` (`sql/hoang/11_freshness_columns.sql`, backfill toàn bộ dòng
+  hiện có = thời điểm chạy script) + trigger `trg_region_sales_updated` tự
+  cập nhật `updated_at` mỗi khi có UPDATE thật. `get_data_freshness()` giờ
+  trả về 3 field tách bạch: `last_data_update` (freshness thật, từ
+  `MAX(updated_at)`, chính xác 100%), `content_coverage_year`, `total_rows` -
+  hiển thị rõ ràng từng ý nghĩa riêng trên `/admin`, trang chat chỉ hiện
+  `last_data_update` (đúng câu hỏi gốc "dữ liệu update lần cuối khi nào").
+  `region_sales` không có cột `id` (PK) và có 16 cặp `(region_id,
+  game_platform_id)` trùng lặp (xem `09_indexes.sql`) nên trigger match theo
+  2 cột này bằng `EXISTS` thay vì join 1-1 - chấp nhận được vì chỉ đọc
+  `MAX(updated_at)` tổng hợp, không cần chính xác từng dòng.
+- **Feedback người dùng (👍/👎)**: mỗi câu trả lời thành công có nút đánh giá
+  trên khung chat, gửi qua `POST /feedback` (kèm `request_id` trả về từ
+  `/ask`), lưu vào cột `feedback` trong `logs.db`. `/admin` hiện tổng số
+  👍/👎 và cột "Đánh giá" trong bảng log chi tiết - proxy đơn giản cho chất
+  lượng câu trả lời theo thời gian thay vì chỉ dựa vào grounding check tự
+  động.
+- **Test tự động**: `ai/nl2sql/tests/` (pytest) cho `guardrails.py` và
+  `sql_validator.py` - 2 lớp chặn quan trọng nhất. Lần chạy đầu tiên bắt
+  được ngay 1 bug thật: regex chặn injection `"ignore (all|previous|above)
+  instructions"` chỉ khớp đúng 1 từ đệm, bỏ sót câu kinh điển "ignore all
+  previous instructions" (2 từ đệm) - đã sửa thành `"ignore\b.{0,20}
+  \binstructions\b"` (khoảng cách, không đếm số từ đệm).
 - **Lỗi hạ tầng hiện cho user theo nhóm** (timeout / mất kết nối / lỗi xác
   thực / không rõ nguyên nhân - `agent._categorize_error`), không lộ chi tiết
   exception/stack trace ra giao diện; chi tiết thật vẫn được ghi đầy đủ vào
@@ -186,8 +252,8 @@ code, mô tả để tham khảo khi mở rộng):
 
 - **Hệ thống/hiệu năng**: Prometheus + Grafana hoặc APM thay vì SQLite/HTML
   tự chế; connection pool thật thay vì 1 connection đơn.
-- **Chất lượng/an toàn AI**: % câu trả lời grounded theo thời gian, human
-  feedback (thumbs up/down), drift detection trên phân bố câu hỏi.
+- **Chất lượng/an toàn AI**: % câu trả lời grounded theo thời gian, drift
+  detection trên phân bố câu hỏi (feedback 👍/👎 đã có, xem mục trên).
 - **Dữ liệu**: dashboard chất lượng dữ liệu, alert khi constraint bị vi phạm
   bất thường.
 

@@ -60,6 +60,7 @@ class AgentResult:
     columns: list = field(default_factory=list)
     rows: list = field(default_factory=list)
     answer: str = ""
+    request_id: int = None  # id dong log trong logs.db - dung de gui feedback (/feedback)
 
 
 def _now_ms() -> float:
@@ -74,7 +75,7 @@ def ask(question: str) -> AgentResult:
 
     def _save(blocked: bool, block_stage: str = None, reason: str = "") -> None:
         try:
-            logging_store.record(
+            result.request_id = logging_store.record(
                 created_at=datetime.now(timezone.utc).isoformat(),
                 question=question,
                 blocked=int(blocked),

@@ -79,6 +79,8 @@ PAGE = """
               color: var(--text-dim); display: inline-flex; align-items: center; justify-content: center; }
   .icon-btn:hover { background: #e2e4ec; color: var(--text); }
   .icon-btn svg { width: 14px; height: 14px; }
+  .icon-btn.fb-up.active { color: #0ca30c; }
+  .icon-btn.fb-down.active { color: #d03b3b; }
   .sidebar-footer { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); }
   .sidebar-footer a { font-size: 12px; color: var(--text-dim); text-decoration: none; }
   .sidebar-footer a:hover { color: var(--accent); }
@@ -192,6 +194,8 @@ const ICONS = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>',
 };
 
 function iconBtn(name, title, onClick) {
@@ -324,6 +328,20 @@ function copyText(text) {
   if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
 }
 
+function sendFeedback(index, value) {
+  const s = currentSession();
+  const m = s.messages[index];
+  if (!m || !m.requestId) return;
+  m.feedback = m.feedback === value ? null : value; // bam lai nut da chon -> bo danh gia
+  saveStore(store);
+  renderChat();
+  fetch('/feedback', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({request_id: m.requestId, feedback: m.feedback}),
+  }).catch(() => {});
+}
+
 let editingIndex = null;
 
 function startEdit(index) {
@@ -414,6 +432,16 @@ function renderMsg(m, index) {
   } else {
     actionsRow.appendChild(iconBtn('copy', 'Sao chép', () => copyText(m.text)));
     actionsRow.appendChild(iconBtn('retry', 'Thử lại', () => retryFromBotIndex(index)));
+    if (m.requestId && !m.blocked && !m.error) {
+      const upBtn = iconBtn('up', 'Câu trả lời hữu ích', () => sendFeedback(index, 'up'));
+      upBtn.classList.add('fb-up');
+      if (m.feedback === 'up') upBtn.classList.add('active');
+      actionsRow.appendChild(upBtn);
+      const downBtn = iconBtn('down', 'Câu trả lời chưa đúng', () => sendFeedback(index, 'down'));
+      downBtn.classList.add('fb-down');
+      if (m.feedback === 'down') downBtn.classList.add('active');
+      actionsRow.appendChild(downBtn);
+    }
   }
   if (m.timestamp) {
     const t = document.createElement('span');
@@ -500,7 +528,7 @@ async function ask(question) {
     } else if (data.blocked) {
       botMsg = { role: 'bot', blocked: true, text: '[BỊ CHẶN] ' + data.reason };
     } else {
-      botMsg = { role: 'bot', text: data.answer, sql: data.sql, rowCount: data.row_count };
+      botMsg = { role: 'bot', text: data.answer, sql: data.sql, rowCount: data.row_count, requestId: data.request_id };
     }
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -554,7 +582,8 @@ def index():
     # provenance/lineage (nhung thu do chi admin can qua /admin).
     try:
         fresh = db.get_data_freshness()
-        freshness_note = f"Dữ liệu cập nhật đến năm {fresh['max_release_year']}"
+        last_update = fresh["last_data_update"]
+        freshness_note = f"Dữ liệu cập nhật lần cuối: {last_update:%d/%m/%Y}"
     except Exception:
         agent.logger.exception("Không lấy được data freshness cho trang chủ")
         freshness_note = None  # DB chua san sang - khong chan trang chat vi ly do nay
@@ -582,8 +611,20 @@ def ask():
             "sql": result.sql,
             "answer": result.answer,
             "row_count": len(result.rows),
+            "request_id": result.request_id,
         }
     )
+
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    data = request.get_json(force=True) or {}
+    request_id = data.get("request_id")
+    value = data.get("feedback")
+    if not request_id or value not in ("up", "down", None):
+        return jsonify({"ok": False}), 400
+    ok = logging_store.set_feedback(int(request_id), value)
+    return jsonify({"ok": ok})
 
 
 ADMIN_PAGE = """
@@ -626,11 +667,18 @@ ADMIN_PAGE = """
   .badge.ok { background: #e6f4ea; color: #1a7f37; }
   .badge.blocked { background: #fdecea; color: #b3261e; }
   .toolbar { margin-bottom: 12px; font-size: 13px; }
-  .gov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-  .gov-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 12px 14px; font-size: 12.5px; }
-  .gov-card h3 { font-size: 12px; margin: 0 0 6px; color: #52514e; text-transform: uppercase; letter-spacing: .03em; }
-  .gov-card p { margin: 0 0 4px; }
-  .gov-card ol { margin: 4px 0 0; padding-left: 16px; }
+  .gov-glossary { background: #f0f1fa; border: 1px solid #dcdef5; border-radius: 8px; padding: 10px 14px;
+                  margin-bottom: 10px; font-size: 12px; color: #44475a; display: grid;
+                  grid-template-columns: repeat(4, 1fr); gap: 4px 16px; }
+  .gov-glossary strong { color: #1f2430; }
+  .gov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; align-items: stretch; }
+  .gov-card { background: white; border: 1px solid #e2e2e2; border-left: 3px solid var(--gc, #4f46e5);
+              border-radius: 8px; padding: 12px 14px; font-size: 12.5px; display: flex; flex-direction: column; gap: 5px; }
+  .gov-card h3 { font-size: 12px; margin: 0 0 2px; color: var(--gc, #4f46e5); text-transform: uppercase;
+                 letter-spacing: .03em; display: flex; align-items: center; gap: 6px; }
+  .gov-card p { margin: 0; color: #3a3a3a; }
+  .gov-card p strong { color: #111; }
+  .gov-card ol { margin: 2px 0 0; padding-left: 16px; color: #3a3a3a; }
   .gov-card ol li { margin-bottom: 3px; }
 </style>
 </head>
@@ -641,6 +689,7 @@ ADMIN_PAGE = """
     <div class="stat"><div class="num">{{ stats.total }}</div><div class="label">Tổng số câu hỏi</div></div>
     <div class="stat"><div class="num">{{ stats.blocked }}</div><div class="label">Bị chặn (guardrail/validator)</div></div>
     <div class="stat"><div class="num">{{ stats.avg_ms }} ms</div><div class="label">Thời gian xử lý trung bình (câu thành công)</div></div>
+    <div class="stat"><div class="num">👍 {{ feedback_stats.up }} / 👎 {{ feedback_stats.down }}</div><div class="label">Đánh giá của user (thumbs up/down)</div></div>
   </div>
   <div class="dashboard">
     <div class="donut-card">
@@ -665,34 +714,39 @@ ADMIN_PAGE = """
     </div>
   </div>
 
+  <div class="gov-glossary">
+    <span><strong>Knowledge Cutoff</strong> — mốc kiến thức huấn luyện của model AI.</span>
+    <span><strong>Data Freshness</strong> — dữ liệu được ghi/cập nhật lần cuối khi nào.</span>
+    <span><strong>Data Provenance</strong> — dữ liệu đến từ đâu, ai nạp/xử lý.</span>
+    <span><strong>Data Lineage</strong> — dòng chảy xử lý dữ liệu từ nguồn tới câu trả lời.</span>
+  </div>
+
   <div class="gov-grid">
-    <div class="gov-card">
-      <h3>Knowledge Cutoff</h3>
-      <p>Model: <strong>{{ model_info.provider }}/{{ model_info.model }}</strong></p>
-      <p>Mốc kiến thức huấn luyện: {{ model_info.knowledge_cutoff }}</p>
-      <p style="color:#898781;">Chỉ tham khảo/audit - câu trả lời dựa trên kết
-      quả SQL thật (grounding check), không dựa trí nhớ huấn luyện của model.</p>
+    <div class="gov-card" style="--gc:#4f46e5;">
+      <h3>🧠 Knowledge Cutoff</h3>
+      <p><strong>{{ model_info.provider }}/{{ model_info.model }}</strong></p>
+      <p>Mốc kiến thức: {{ model_info.knowledge_cutoff }}</p>
     </div>
-    <div class="gov-card">
-      <h3>Data Freshness</h3>
-      <p>Dữ liệu game cập nhật đến năm: <strong>{{ freshness.max_release_year }}</strong></p>
-      <p>Tổng số dòng doanh số: {{ freshness.total_rows }}</p>
-      <p>Lần cuối bảng region_sales bị ghi/đổi (STATS_DATE): {{ freshness.stats_date }}</p>
+    <div class="gov-card" style="--gc:#2563eb;">
+      <h3>🕒 Data Freshness</h3>
+      <p>Cập nhật lần cuối: <strong>{{ freshness.last_data_update }}</strong></p>
+      <p>Nội dung phủ tới năm: {{ freshness.content_coverage_year }}</p>
+      <p>{{ freshness.total_rows }} dòng doanh số</p>
     </div>
-    <div class="gov-card">
-      <h3>Data Provenance</h3>
-      <p>Dataset gốc: Video Game Sales.</p>
-      <p>Nạp qua sql/quantl3/G7_Dbscript.sql (Contributor: quantl3@fpt.edu.vn).</p>
-      <p>Ràng buộc bởi Vi (sql/vi/), index + view NL2SQL bởi Hoàng (sql/hoang/).</p>
+    <div class="gov-card" style="--gc:#7c3aed;">
+      <h3>📦 Data Provenance</h3>
+      <p>Dataset gốc: <strong>Video Game Sales</strong></p>
+      <p>Nạp qua G7_Dbscript.sql (quantl3@fpt.edu.vn)</p>
+      <p>Ràng buộc: Vi · Index/view NL2SQL: Hoàng</p>
     </div>
-    <div class="gov-card">
-      <h3>Data Lineage</h3>
+    <div class="gov-card" style="--gc:#0891b2;">
+      <h3>🔗 Data Lineage</h3>
       <ol>
-        <li>G7_Dbscript.sql - tạo bảng + insert thô</li>
-        <li>02_constraints.sql - ràng buộc dữ liệu</li>
-        <li>09_indexes.sql - index tăng tốc</li>
-        <li>08_nl2sql_view.sql - view vw_game_sales_full</li>
-        <li>NL2SQL Agent đọc view → LLM → trả lời</li>
+        <li>Tạo bảng + insert (G7_Dbscript.sql)</li>
+        <li>Ràng buộc (02_constraints.sql)</li>
+        <li>Index (09_indexes.sql)</li>
+        <li>View vw_game_sales_full</li>
+        <li>NL2SQL Agent → LLM → trả lời</li>
       </ol>
     </div>
   </div>
@@ -700,7 +754,7 @@ ADMIN_PAGE = """
   <table>
     <thead>
       <tr>
-        <th>Thời gian</th><th>Câu hỏi</th><th>Trạng thái</th><th>SQL đã sinh</th>
+        <th>Thời gian</th><th>Câu hỏi</th><th>Trạng thái</th><th>Đánh giá</th><th>SQL đã sinh</th>
         <th>SQL sau validate</th><th>Số dòng</th><th>Câu trả lời</th>
         <th>LLM sinh SQL (ms)</th><th>DB exec (ms)</th><th>LLM diễn giải (ms)</th><th>Tổng (ms)</th>
       </tr>
@@ -717,6 +771,7 @@ ADMIN_PAGE = """
             <span class="badge ok">OK</span>
           {% endif %}
         </td>
+        <td>{% if r.feedback == 'up' %}👍{% elif r.feedback == 'down' %}👎{% endif %}</td>
         <td class="mono">{{ r.raw_sql }}</td>
         <td class="mono">{{ r.safe_sql }}</td>
         <td>{{ r.row_count }}</td>
@@ -789,15 +844,17 @@ def _build_donut():
 def admin():
     logs = logging_store.fetch_recent(limit=200)
     stats = logging_store.fetch_stats()
+    feedback_stats = logging_store.fetch_feedback_stats()
     donut_slices, donut_gradient, donut_total = _build_donut()
     try:
         freshness = db.get_data_freshness()
     except Exception as exc:
-        freshness = {"max_release_year": "?", "total_rows": "?", "stats_date": f"lỗi: {exc}"}
+        freshness = {"content_coverage_year": "?", "total_rows": "?", "last_data_update": f"lỗi: {exc}"}
     return render_template_string(
         ADMIN_PAGE,
         logs=logs,
         stats=stats,
+        feedback_stats=feedback_stats,
         donut_slices=donut_slices,
         donut_gradient=donut_gradient,
         donut_total=donut_total,
