@@ -18,7 +18,6 @@ import pyodbc
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# TODO (Hoang): thay connection string cho dung voi SQL Server instance cua nhom
 CONNECTION_STRING = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
     "SERVER=localhost;"
@@ -98,6 +97,3 @@ if __name__ == "__main__":
 
     recommendations = recommend(args.game_id, args.top_n)
     print(recommendations.to_string(index=False))
-
-# TODO (Hoang): mo rong them - vd doi sang collaborative filtering theo doanh so
-# vung (region_sales), hoac dung embedding/LLM de mo ta ly do goi y bang ngon ngu tu nhien.

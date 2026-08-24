@@ -19,11 +19,10 @@
 -- get_data_freshness() chỉ đọc MAX(updated_at) tổng hợp, không cần chính xác
 -- từng dòng.
 --
--- Lưu ý 2: Vi có 1 trigger INSTEAD OF INSERT, UPDATE trên region_sales
--- (sql/vi/06_trigger.sql, hiện CHƯA chạy trên DB local này) - trigger AFTER
--- UPDATE dưới đây tương thích: nếu trigger INSTEAD OF của Vi thực thi 1 lệnh
--- UPDATE thật bên trong (theo đúng TODO của Vi), trigger AFTER này sẽ tự
--- được gọi lồng bên trong đó (nested trigger, mặc định bật sẵn ở SQL Server).
+-- Lưu ý 2: Vi có 1 trigger AFTER INSERT, UPDATE, DELETE trên region_sales
+-- (sql/vi/06_trigger.sql) ghi log audit sang bảng region_sales_audit.
+-- Hai trigger AFTER trên cùng 1 bảng cùng chạy được, thứ tự không ảnh hưởng
+-- kết quả vì chúng ghi vào 2 nơi khác nhau (cột updated_at và bảng audit).
 -- ============================================
 USE [Group7]
 GO

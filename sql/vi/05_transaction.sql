@@ -4,27 +4,50 @@
 -- Mục đích: >= 1 transaction có sử dụng ROLLBACK
 -- ============================================
 
-USE [Group7]
+USE [Group7];
 GO
 
-BEGIN TRANSACTION;
-
+/* =========================================================
+   Requirement 8: Transaction
+   Insert one new game, publisher relation, platform relation,
+   and four regional sales records as one atomic transaction.
+   ========================================================= */
 BEGIN TRY
-    UPDATE region_sales
-    SET num_sales = num_sales + 1
-    WHERE region_id = 1;
+    BEGIN TRANSACTION;
 
-    -- Giả lập lỗi để kiểm tra rollback (bỏ comment để test)
-    -- RAISERROR('Loi gia lap', 16, 1);
+    DECLARE @GameID INT =
+        (SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.game);
+    DECLARE @GamePublisherID INT =
+        (SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.game_publisher);
+    DECLARE @GamePlatformID INT =
+        (SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.game_platform);
+
+    /* Use existing Nintendo publisher and Wii platform */
+    INSERT INTO dbo.game (id, genre_id, game_name)
+    VALUES (@GameID, 1, 'DBI202 Assignment Demo Game');
+
+    INSERT INTO dbo.game_publisher (id, game_id, publisher_id)
+    VALUES (@GamePublisherID, @GameID, 369);
+
+    INSERT INTO dbo.game_platform
+        (id, game_publisher_id, platform_id, release_year)
+    VALUES
+        (@GamePlatformID, @GamePublisherID, 1, 2026);
+
+    INSERT INTO dbo.region_sales
+        (region_id, game_platform_id, num_sales)
+    VALUES
+        (1, @GamePlatformID, 1.20),
+        (2, @GamePlatformID, 0.80),
+        (3, @GamePlatformID, 0.50),
+        (4, @GamePlatformID, 0.20);
 
     COMMIT TRANSACTION;
+    PRINT 'Transaction committed successfully.';
 END TRY
 BEGIN CATCH
-    ROLLBACK TRANSACTION;
-    PRINT 'Transaction rolled back: ' + ERROR_MESSAGE();
+    IF XACT_STATE() <> 0
+        ROLLBACK TRANSACTION;
+    THROW;
 END CATCH;
 GO
-
--- TODO (Vi): thay bằng transaction gắn với nghiệp vụ thực tế
--- (vd: thêm game + game_publisher + game_platform + region_sales cùng lúc,
--- rollback nếu 1 bước thất bại)
