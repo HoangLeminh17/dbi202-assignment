@@ -102,14 +102,27 @@ def fetch_feedback_stats() -> dict:
 
 
 def fetch_recent(
-    limit: int = 200, status: str = None, date_from: str = None, date_to: str = None
+    limit: int = 200,
+    status: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    year: str = None,
+    feedback: str = None,
 ) -> list:
-    """status: None/"" = tất cả; "ok" = thành công; "blocked" = bị chặn theo
+    """Mọi điều kiện lọc kết hợp kiểu AND (thu hẹp dần), không phải OR.
+
+    status: None/"" = tất cả; "ok" = thành công; "blocked" = bị chặn theo
     thiết kế (guardrail/validator); "error" = lỗi hạ tầng (service_error) -
     cùng cách nhóm 3 trạng thái với donut chart ở trên (_build_donut).
     date_from/date_to: chuỗi "YYYY-MM-DD" - so sánh trực tiếp theo prefix của
     created_at (ISO 8601 nên so sánh chuỗi vẫn đúng thứ tự thời gian, không
     cần parse datetime).
+    year: chuỗi "YYYY" - loc nhanh nguyên 1 năm (tuong duong date_from=Y-01-01,
+    date_to=Y-12-31) ma khong can go tay tung ngay. Neu vua co year vua co
+    date_from/date_to, ca hai cung ap dung (AND) - year se tu thu hep, thuong
+    dung 1 trong 2 cach la du.
+    feedback: None/"" = tất cả; "up"/"down" = đã đánh giá 👍/👎; "none" = chưa
+    đánh giá.
     """
     conditions = []
     params = []
@@ -127,6 +140,14 @@ def fetch_recent(
     if date_to:
         conditions.append("created_at <= ?")
         params.append(date_to + "T23:59:59")
+    if year:
+        conditions.append("created_at LIKE ?")
+        params.append(f"{year}-%")
+    if feedback in ("up", "down"):
+        conditions.append("feedback = ?")
+        params.append(feedback)
+    elif feedback == "none":
+        conditions.append("(feedback IS NULL OR feedback = '')")
     where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     conn = _connect()
@@ -137,6 +158,20 @@ def fetch_recent(
             params + [limit],
         ).fetchall()
         return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def fetch_available_years() -> list:
+    """Danh sách năm THẬT co du lieu trong logs.db (khong phai list co dinh) -
+    phuc vu dropdown "Nam" tren /admin, luon khop voi du lieu hien co."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT substr(created_at, 1, 4) AS y FROM request_logs "
+            "WHERE created_at IS NOT NULL ORDER BY y DESC"
+        ).fetchall()
+        return [r[0] for r in rows if r[0]]
     finally:
         conn.close()
 

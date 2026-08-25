@@ -700,13 +700,6 @@ ADMIN_PAGE = """
   .metric-tile .v { font-size: 21px; font-weight: 700; color: var(--mc, #1f2430); font-variant-numeric: tabular-nums; }
   .metric-tile .k { font-size: 10.5px; color: #898781; text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
   .metric-empty { font-size: 12.5px; color: #b6b3aa; padding: 18px 0; text-align: center; }
-  .lat-viz { display: flex; flex-direction: column; justify-content: center; gap: 14px; flex: 1; }
-  .lat-row { display: flex; align-items: center; gap: 10px; }
-  .lat-row .lbl { width: 28px; font-family: Consolas, monospace; font-size: 11.5px; font-weight: 700; flex-shrink: 0; }
-  .lat-row .track { flex: 1; height: 16px; background: #f0f0ee; border-radius: 8px; overflow: hidden; }
-  .lat-row .fill { height: 100%; border-radius: 8px; }
-  .lat-row .val { font-size: 12.5px; font-weight: 700; color: #1f2430; flex-shrink: 0; min-width: 82px;
-                   text-align: right; font-variant-numeric: tabular-nums; }
   .donut-card h2 { font-size: 13px; margin: 0 0 0 0; color: #52514e; font-weight: 600; }
   .donut-wrap { position: relative; width: 176px; height: 176px; flex-shrink: 0; }
   .donut { width: 176px; height: 176px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
@@ -730,7 +723,8 @@ ADMIN_PAGE = """
   tr.blocked { background: #fffbea; }
   .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
   .badge.ok { background: #e6f4ea; color: #1a7f37; }
-  .badge.blocked { background: #fdecea; color: #b3261e; }
+  .badge.warn { background: #fff6e0; color: #92660a; }
+  .badge.err { background: #fdecea; color: #b3261e; }
   .gov-glossary { background: #f0f1fa; border: 1px solid #dcdef5; border-radius: 8px; padding: 10px 14px;
                   margin-bottom: 10px; font-size: 12px; color: #44475a; display: grid;
                   grid-template-columns: repeat(4, 1fr); gap: 4px 16px; }
@@ -782,9 +776,38 @@ ADMIN_PAGE = """
                 padding: 10px 14px; margin-bottom: 10px; }
   .log-search-form { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
   .log-search-form label { display: flex; align-items: center; gap: 6px; color: #52514e; }
-  .log-search-form select, .log-search-form input[type=date] {
+  .log-search-form input[type=date], .log-search-form select {
     font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 6px; border: 1px solid #d6d6d0;
   }
+  .status-dropdown { position: relative; }
+  .status-dropdown summary {
+    list-style: none; display: flex; align-items: center; gap: 7px; cursor: pointer;
+    font-size: 12.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid #d6d6d0;
+    background: white; color: #1f2430; user-select: none;
+  }
+  .status-dropdown summary::-webkit-details-marker { display: none; }
+  .status-dropdown summary::marker { content: ""; }
+  .status-dropdown[open] summary { border-color: #1f2430; }
+  .status-dropdown summary .chev { color: #898781; font-size: 10px; margin-left: 2px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #b6b3aa; flex-shrink: 0; }
+  .status-dot.ok { background: #1a7f37; }
+  .status-dot.warn { background: #92660a; }
+  .status-dot.err { background: #b3261e; }
+  .status-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 200px;
+    background: white; border: 1px solid #e2e2e2; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(20,20,20,.12); padding: 6px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .status-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 7px;
+                  font-size: 12.5px; cursor: pointer; }
+  .status-item input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .status-item.all { background: #f6f6f4; color: #52514e; }
+  .status-item.ok { background: #e6f4ea; color: #1a7f37; }
+  .status-item.warn { background: #fff6e0; color: #92660a; }
+  .status-item.err { background: #fdecea; color: #b3261e; }
+  .status-item:hover { filter: brightness(.96); }
+  .status-item input:checked ~ .status-item-check { opacity: 1; }
+  .status-item-check { margin-left: auto; opacity: 0; font-weight: 700; }
   .log-search-form button {
     font: inherit; font-size: 12.5px; padding: 5px 14px; border-radius: 999px;
     border: 1px solid #d6d6d0; background: white; color: #1f2430; cursor: pointer;
@@ -834,35 +857,16 @@ ADMIN_PAGE = """
 
     <div class="metric-card">
       <div class="metric-head">
-        <h2 title="Thang màu tính theo % ngân sách timeout của pipeline (2 lần gọi LLM + 1 lần query DB) - không phải so P50/P90/P99 với nhau, để phản ánh đúng nhanh/chậm thực tế.">⏱ Độ trễ theo percentile</h2>
-      </div>
-      {% if latency_bars %}
-      <div class="lat-viz">
-        {% for b in latency_bars %}
-        <div class="lat-row">
-          <span class="lbl" style="color: {{ b.color }};">{{ b.label }}</span>
-          <div class="track"><div class="fill" style="width: {{ b.pct }}%; background: {{ b.color }};"></div></div>
-          <span class="val">{{ b.ms }} ms</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="metric-empty">Chưa có dữ liệu</div>
-      {% endif %}
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-head">
-        <h2>🪙 Token &amp; chi phí</h2>
+        <h2>🪙 Token</h2>
         {% if cost_estimate %}
           <span class="cost-badge" title="Theo giá cấu hình trong .env, trên {{ token_stats.requests_with_usage }} request có gọi LLM">≈ ${{ '%.4f'|format(cost_estimate) }}</span>
         {% endif %}
       </div>
       {% if token_stats.requests_with_usage %}
       <div class="metric-row">
-        <div class="metric-tile"><div class="v">{{ '{:,}'.format(token_stats.input_tokens) }}</div><div class="k">Input</div></div>
-        <div class="metric-tile"><div class="v">{{ '{:,}'.format(token_stats.output_tokens) }}</div><div class="k">Output</div></div>
-        <div class="metric-tile" title="Token đọc từ cache (rẻ hơn nhiều so với input token thường)"><div class="v">{{ '{:,}'.format(token_stats.cache_read_tokens) }}</div><div class="k">Cache-read</div></div>
+        <div class="metric-tile" style="--mc:#4f46e5;"><div class="v">{{ '{:,}'.format(token_stats.input_tokens) }}</div><div class="k">Input</div></div>
+        <div class="metric-tile" style="--mc:#0891b2;"><div class="v">{{ '{:,}'.format(token_stats.output_tokens) }}</div><div class="k">Output</div></div>
+        <div class="metric-tile" style="--mc:#d97706;" title="Token đọc từ cache (rẻ hơn nhiều so với input token thường)"><div class="v">{{ '{:,}'.format(token_stats.cache_read_tokens) }}</div><div class="k">Cache-read</div></div>
       </div>
       {% else %}
       <div class="metric-empty">Chưa có dữ liệu</div>
@@ -966,25 +970,150 @@ ADMIN_PAGE = """
   </div>
 
   <div class="log-search">
-    <form method="get" action="/admin" class="log-search-form">
+    <form method="get" action="/admin" class="log-search-form" id="logSearchForm">
       {% if stage_n %}<input type="hidden" name="n" value="{{ stage_n }}">{% endif %}
-      <label>Trạng thái
-        <select name="status">
-          <option value="" {{ 'selected' if not status_filter else '' }}>Tất cả</option>
-          <option value="ok" {{ 'selected' if status_filter == 'ok' else '' }}>Thành công</option>
-          <option value="blocked" {{ 'selected' if status_filter == 'blocked' else '' }}>Bị chặn theo thiết kế</option>
-          <option value="error" {{ 'selected' if status_filter == 'error' else '' }}>Lỗi hạ tầng</option>
+      {% set status_label = {'ok': 'Thành công', 'blocked': 'Bị chặn theo thiết kế', 'error': 'Lỗi hạ tầng'}.get(status_filter, 'Tất cả') %}
+      {% set status_dot = {'ok': 'ok', 'blocked': 'warn', 'error': 'err'}.get(status_filter, '') %}
+      <details class="status-dropdown" id="statusDropdown">
+        <summary>
+          <span class="status-dot {{ status_dot }}"></span>
+          <span id="statusCurrentLabel">{{ status_label }}</span>
+          <span class="chev">▾</span>
+        </summary>
+        <div class="status-menu">
+          <label class="status-item all">
+            <input type="radio" name="status" value="" {{ 'checked' if not status_filter else '' }}>
+            <span class="status-dot"></span> Tất cả <span class="status-item-check">✓</span>
+          </label>
+          <label class="status-item ok">
+            <input type="radio" name="status" value="ok" {{ 'checked' if status_filter == 'ok' else '' }}>
+            <span class="status-dot ok"></span> Thành công <span class="status-item-check">✓</span>
+          </label>
+          <label class="status-item warn">
+            <input type="radio" name="status" value="blocked" {{ 'checked' if status_filter == 'blocked' else '' }}>
+            <span class="status-dot warn"></span> Bị chặn theo thiết kế <span class="status-item-check">✓</span>
+          </label>
+          <label class="status-item err">
+            <input type="radio" name="status" value="error" {{ 'checked' if status_filter == 'error' else '' }}>
+            <span class="status-dot err"></span> Lỗi hạ tầng <span class="status-item-check">✓</span>
+          </label>
+        </div>
+      </details>
+      <label>Năm
+        <select name="year">
+          <option value="" {{ 'selected' if not year_filter else '' }}>Tất cả</option>
+          {% for y in available_years %}
+          <option value="{{ y }}" {{ 'selected' if year_filter == y else '' }}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Đánh giá
+        <select name="feedback">
+          <option value="" {{ 'selected' if not feedback_filter else '' }}>Tất cả</option>
+          <option value="up" {{ 'selected' if feedback_filter == 'up' else '' }}>👍 Hài lòng</option>
+          <option value="down" {{ 'selected' if feedback_filter == 'down' else '' }}>👎 Chưa hài lòng</option>
+          <option value="none" {{ 'selected' if feedback_filter == 'none' else '' }}>Chưa đánh giá</option>
         </select>
       </label>
       <label>Từ ngày <input type="date" name="date_from" value="{{ date_from }}"></label>
       <label>Đến ngày <input type="date" name="date_to" value="{{ date_to }}"></label>
       <button type="submit">Tìm</button>
-      {% if status_filter or date_from or date_to %}
-        <a class="clear-link" href="/admin{{ '?n=' + stage_n if stage_n else '' }}">Xoá lọc</a>
-      {% endif %}
-      <span class="result-hint">{{ logs|length }} dòng khớp (tối đa 200)</span>
+      <a class="clear-link" id="clearLogFilters" href="/admin{{ '?n=' + stage_n if stage_n else '' }}"
+         style="{{ '' if (status_filter or date_from or date_to or year_filter or feedback_filter) else 'display:none;' }}">Xoá lọc</a>
+      <span class="result-hint" id="resultHint">{{ logs|length }} dòng khớp (tối đa 200)</span>
     </form>
   </div>
+
+  <script>
+  (function () {
+    var form = document.getElementById('logSearchForm');
+    if (!form) return;
+    var dropdown = document.getElementById('statusDropdown');
+    var labelEl = document.getElementById('statusCurrentLabel');
+    var summaryDot = dropdown ? dropdown.querySelector('summary .status-dot') : null;
+    var resultHint = document.getElementById('resultHint');
+    var clearLink = document.getElementById('clearLogFilters');
+
+    // Tim kiem bang fetch() - thay tbody tai cho thay vi submit form dieu
+    // huong ca trang (tranh reload/nhay len dau trang khi bam Tim hoac doi
+    // trang thai/nam/danh gia). Moi dieu kien ket hop AND (thu hep dan).
+    function submitSearch() {
+      var raw = new URLSearchParams(new FormData(form));
+      var clean = new URLSearchParams();
+      var hasFilter = false;
+      raw.forEach(function (v, k) {
+        if (v) {
+          clean.set(k, v);
+          if (k !== 'n') hasFilter = true;
+        }
+      });
+      fetch('/admin/log-rows?' + clean.toString())
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var tbody = document.getElementById('logRowsBody');
+          tbody.innerHTML = data.html;
+          if (window.__rebindRowPicks) window.__rebindRowPicks();
+          if (resultHint) resultHint.textContent = data.count + ' dòng khớp (tối đa 200)';
+          if (clearLink) {
+            clearLink.style.display = hasFilter ? '' : 'none';
+            var n = clean.get('n');
+            clearLink.href = '/admin' + (n ? '?n=' + encodeURIComponent(n) : '');
+          }
+          var qs = clean.toString();
+          history.pushState({}, '', '/admin' + (qs ? '?' + qs : ''));
+        })
+        .catch(function () { form.submit(); }); // fallback: fetch loi thi cu submit binh thuong
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submitSearch();
+    });
+
+    if (dropdown && labelEl) {
+      var radios = dropdown.querySelectorAll('input[name="status"]');
+      Array.prototype.forEach.call(radios, function (r) {
+        r.addEventListener('change', function () {
+          var item = r.closest('.status-item');
+          labelEl.textContent = item.textContent.replace('✓', '').trim();
+          summaryDot.className = 'status-dot' +
+            (item.classList.contains('ok') ? ' ok' :
+             item.classList.contains('warn') ? ' warn' :
+             item.classList.contains('err') ? ' err' : '');
+          dropdown.open = false;
+          submitSearch(); // loc ngay khi chon, khong bat nguoi dung phai bam them nut Tim
+        });
+      });
+      document.addEventListener('click', function (e) {
+        if (dropdown.open && !dropdown.contains(e.target)) dropdown.open = false;
+      });
+    }
+
+    // Nam/Danh gia cung loc ngay khi doi, giong hanh vi cua Trang thai
+    Array.prototype.forEach.call(form.querySelectorAll('select[name="year"], select[name="feedback"]'), function (s) {
+      s.addEventListener('change', submitSearch);
+    });
+
+    if (clearLink) {
+      clearLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        var allRadio = form.querySelector('input[name="status"][value=""]');
+        if (allRadio) allRadio.checked = true;
+        if (labelEl) labelEl.textContent = 'Tất cả';
+        if (summaryDot) summaryDot.className = 'status-dot';
+        var yearSel = form.querySelector('select[name="year"]');
+        var fbSel = form.querySelector('select[name="feedback"]');
+        var df = form.querySelector('input[name="date_from"]');
+        var dt = form.querySelector('input[name="date_to"]');
+        if (yearSel) yearSel.value = '';
+        if (fbSel) fbSel.value = '';
+        if (df) df.value = '';
+        if (dt) dt.value = '';
+        submitSearch();
+      });
+    }
+  })();
+  </script>
 
   <table>
     <thead>
@@ -995,37 +1124,7 @@ ADMIN_PAGE = """
         <th>LLM sinh SQL (ms)</th><th>DB exec (ms)</th><th>LLM diễn giải (ms)</th><th>Tổng (ms)</th>
       </tr>
     </thead>
-    <tbody>
-    {% for r in logs %}
-      <tr class="{{ 'blocked' if r.blocked else '' }}">
-        <td class="pick-col">
-          {% if not r.blocked %}
-          <input type="checkbox" class="row-pick" title="Dùng dòng này để tính thanh breakdown ở trên"
-                 data-ms-gen="{{ r.ms_generate_sql or 0 }}" data-ms-db="{{ r.ms_db_exec or 0 }}"
-                 data-ms-explain="{{ r.ms_explain or 0 }}">
-          {% endif %}
-        </td>
-        <td>{{ r.created_at }}</td>
-        <td>{{ r.question }}</td>
-        <td>
-          {% if r.blocked %}
-            <span class="badge blocked">BLOCKED - {{ r.block_stage }}</span><br>{{ r.reason }}
-          {% else %}
-            <span class="badge ok">OK</span>
-          {% endif %}
-        </td>
-        <td>{% if r.feedback == 'up' %}👍{% elif r.feedback == 'down' %}👎{% endif %}</td>
-        <td class="mono">{{ r.raw_sql }}</td>
-        <td class="mono">{{ r.safe_sql }}</td>
-        <td>{{ r.row_count }}</td>
-        <td>{{ r.answer }}</td>
-        <td>{{ r.ms_generate_sql }}</td>
-        <td>{{ r.ms_db_exec }}</td>
-        <td>{{ r.ms_explain }}</td>
-        <td>{{ r.ms_total }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
+    <tbody id="logRowsBody">{{ log_rows_html | safe }}</tbody>
   </table>
 
   <script>
@@ -1035,7 +1134,7 @@ ADMIN_PAGE = """
       { key: 'db', label: 'DB thực thi', color: '#0891b2' },
       { key: 'explain', label: 'LLM diễn giải', color: '#d97706' }
     ];
-    var boxes = document.querySelectorAll('.row-pick');
+    var boxes = [];
     var bar = document.getElementById('stageBar');
     var dims = document.getElementById('stageDims');
     var totalMs = document.getElementById('stageTotalMs');
@@ -1096,7 +1195,16 @@ ADMIN_PAGE = """
       };
       render(avg);
     }
-    boxes.forEach(function (c) { c.addEventListener('change', recomputeFromCheckboxes); });
+
+    // Gan lai checkbox moi lan bang duoc thay bang AJAX (tick-chon-dong van
+    // phai hoat dong voi cac dong log moi sau khi tim kiem) - expose ra
+    // window de script tim kiem ben duoi goi lai sau khi thay tbody.
+    function bindRowCheckboxes() {
+      boxes = document.querySelectorAll('.row-pick');
+      Array.prototype.forEach.call(boxes, function (c) { c.addEventListener('change', recomputeFromCheckboxes); });
+    }
+    bindRowCheckboxes();
+    window.__rebindRowPicks = bindRowCheckboxes;
 
     // --- nut/form chon N request gan nhat: fetch() thay vi dieu huong ca trang,
     // de bam khong bi reload/nhay len dau trang ---
@@ -1158,6 +1266,48 @@ ADMIN_PAGE = """
 </body>
 </html>
 """
+
+
+# Tach rieng phan render cac dong bang - dung chung cho lan load trang dau
+# tien (render_template_string ADMIN_PAGE) va cho route /admin/log-rows (fetch
+# JSON khi bam Tim, khong reload ca trang).
+LOG_ROWS_TEMPLATE = """\
+{% for r in logs %}
+  <tr class="{{ 'blocked' if r.blocked else '' }}">
+    <td class="pick-col">
+      {% if not r.blocked %}
+      <input type="checkbox" class="row-pick" title="Dùng dòng này để tính thanh breakdown ở trên"
+             data-ms-gen="{{ r.ms_generate_sql or 0 }}" data-ms-db="{{ r.ms_db_exec or 0 }}"
+             data-ms-explain="{{ r.ms_explain or 0 }}">
+      {% endif %}
+    </td>
+    <td>{{ r.created_at }}</td>
+    <td>{{ r.question }}</td>
+    <td>
+      {% if r.blocked and r.block_stage == 'service_error' %}
+        <span class="badge err">LỖI - {{ r.block_stage }}</span><br>{{ r.reason }}
+      {% elif r.blocked %}
+        <span class="badge warn">CHẶN - {{ r.block_stage }}</span><br>{{ r.reason }}
+      {% else %}
+        <span class="badge ok">OK</span>
+      {% endif %}
+    </td>
+    <td>{% if r.feedback == 'up' %}👍{% elif r.feedback == 'down' %}👎{% endif %}</td>
+    <td class="mono">{{ r.raw_sql }}</td>
+    <td class="mono">{{ r.safe_sql }}</td>
+    <td>{{ r.row_count }}</td>
+    <td>{{ r.answer }}</td>
+    <td>{{ r.ms_generate_sql }}</td>
+    <td>{{ r.ms_db_exec }}</td>
+    <td>{{ r.ms_explain }}</td>
+    <td>{{ r.ms_total }}</td>
+  </tr>
+{% endfor %}
+"""
+
+
+def _render_log_rows(logs: list) -> str:
+    return render_template_string(LOG_ROWS_TEMPLATE, logs=logs)
 
 
 # 3 nhom - dung dung bo mau status (good/warning/critical) theo dataviz
@@ -1294,48 +1444,47 @@ def _cost_estimate(token_stats: dict) -> float:
     ) / 1_000_000
 
 
-# Ngan sach thoi gian toi da 1 request co the chay truoc khi CHINH HE THONG tu
-# timeout: 2 lan goi LLM (generate_sql + explain_result, moi lan toi da
-# llm_client.REQUEST_TIMEOUT_SECONDS) + 1 lan query DB (CONFIG.query_timeout_seconds).
-# Dung moc nay lam "thang do tuyet doi" cho bieu do do tre thay vi so P50/P90/P99
-# VOI NHAU - neu chi so sanh noi bo, hinh dang 3 thanh se LUON giong nhau bat ke
-# he thong dang nhanh hay cham, khong tra loi duoc "vay la tot hay xau".
-_LATENCY_CEILING_MS = (llm_client.REQUEST_TIMEOUT_SECONDS * 2 + CONFIG.query_timeout_seconds) * 1000
+def _read_log_filters() -> dict:
+    return {
+        "status": (request.args.get("status") or "").strip(),
+        "date_from": (request.args.get("date_from") or "").strip(),
+        "date_to": (request.args.get("date_to") or "").strip(),
+        "year": (request.args.get("year") or "").strip(),
+        "feedback": (request.args.get("feedback") or "").strip(),
+    }
 
 
-def _latency_bars(percentiles: dict) -> list:
-    bars = []
-    for label, val in (("P50", percentiles["p50"]), ("P90", percentiles["p90"]), ("P99", percentiles["p99"])):
-        ratio = (val / _LATENCY_CEILING_MS) if _LATENCY_CEILING_MS else 0
-        if ratio < 0.33:
-            color = "#0ca30c"
-        elif ratio < 0.66:
-            color = "#fab219"
-        else:
-            color = "#d03b3b"
-        bars.append({"label": label, "ms": val, "pct": max(min(ratio * 100, 100), 3), "color": color})
-    return bars
+def _fetch_filtered_logs(f: dict) -> list:
+    return logging_store.fetch_recent(
+        limit=200,
+        status=f["status"] or None,
+        date_from=f["date_from"] or None,
+        date_to=f["date_to"] or None,
+        year=f["year"] or None,
+        feedback=f["feedback"] or None,
+    )
+
+
+@app.route("/admin/log-rows")
+@require_admin_auth
+def admin_log_rows():
+    """JSON cho o tim kiem bang log - goi bang fetch() tu JS thay vi submit
+    form dieu huong ca trang, de bam Tim khong bi reload/nhay len dau trang."""
+    f = _read_log_filters()
+    logs = _fetch_filtered_logs(f)
+    return jsonify({"html": _render_log_rows(logs), "count": len(logs)})
 
 
 @app.route("/admin")
 @require_admin_auth
 def admin():
-    status_filter = (request.args.get("status") or "").strip()
-    date_from = (request.args.get("date_from") or "").strip()
-    date_to = (request.args.get("date_to") or "").strip()
-    logs = logging_store.fetch_recent(
-        limit=200,
-        status=status_filter or None,
-        date_from=date_from or None,
-        date_to=date_to or None,
-    )
+    f = _read_log_filters()
+    logs = _fetch_filtered_logs(f)
     stats = logging_store.fetch_stats()
     feedback_stats = logging_store.fetch_feedback_stats()
     donut_slices, donut_gradient, donut_total = _build_donut()
     stage_limit, stage_n = _parse_stage_n(request.args.get("n"))
     stage_segments, stage_total, stage_count = _build_stage_bar(limit=stage_limit)
-    percentiles = logging_store.fetch_latency_percentiles()
-    latency_bars = _latency_bars(percentiles) if percentiles["count"] else []
     token_stats = logging_store.fetch_token_stats()
     try:
         freshness = db.get_data_freshness()
@@ -1344,6 +1493,8 @@ def admin():
     return render_template_string(
         ADMIN_PAGE,
         logs=logs,
+        log_rows_html=_render_log_rows(logs),
+        available_years=logging_store.fetch_available_years(),
         stats=stats,
         feedback_stats=feedback_stats,
         donut_slices=donut_slices,
@@ -1353,13 +1504,13 @@ def admin():
         stage_total=stage_total,
         stage_count=stage_count,
         stage_n=stage_n,
-        percentiles=percentiles,
-        latency_bars=latency_bars,
         token_stats=token_stats,
         cost_estimate=_cost_estimate(token_stats),
-        status_filter=status_filter,
-        date_from=date_from,
-        date_to=date_to,
+        status_filter=f["status"],
+        date_from=f["date_from"],
+        date_to=f["date_to"],
+        year_filter=f["year"],
+        feedback_filter=f["feedback"],
         model_info=llm_client.get_model_info(),
         freshness=freshness,
     )
