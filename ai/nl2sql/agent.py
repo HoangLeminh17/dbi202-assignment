@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 from . import db, llm_client, logging_store
 from .config import CONFIG
-from .guardrails import GuardrailError, check_input, check_output
+from .guardrails import GuardrailError, check_input, fill_and_verify_template
 from .sql_validator import SQLValidationError, validate_and_enforce_limit
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -148,7 +148,7 @@ def ask(question: str) -> AgentResult:
         logger.info("Kết quả: %d dòng", len(rows))
 
         t0 = _now_ms()
-        answer, usage = llm_client.explain_result(question, safe_sql, rows)
+        answer_template, usage = llm_client.explain_result(question, safe_sql, columns, rows)
         _add_usage(usage)
         ms_explain = int(_now_ms() - t0)
     except Exception as exc:  # timeout, mất mạng, DB lỗi, provider API lỗi...
@@ -159,9 +159,8 @@ def ask(question: str) -> AgentResult:
         _save(True, "service_error", f"{category}: {exc}")
         return result
 
-    flat_values = [v for row in rows for v in row]
     try:
-        check_output(answer, safe_sql, flat_values)
+        answer = fill_and_verify_template(answer_template, safe_sql, columns, rows)
     except GuardrailError as exc:
         logger.warning("Output guardrail block: %s", exc.reason)
         result.blocked, result.reason = True, exc.reason

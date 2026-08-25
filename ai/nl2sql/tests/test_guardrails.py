@@ -3,7 +3,7 @@ grounding check dau ra. Chay: pytest ai/nl2sql/tests/ (tu thu muc goc repo).
 """
 import pytest
 
-from ai.nl2sql.guardrails import GuardrailError, check_input, check_output
+from ai.nl2sql.guardrails import GuardrailError, check_input, fill_and_verify_template
 
 
 class TestCheckInput:
@@ -42,61 +42,78 @@ class TestCheckInput:
             check_input("top game; --")
 
 
-class TestCheckOutput:
-    def test_passes_when_numbers_match_result(self):
-        check_output(
-            "Wii Sports dan dau voi 82.74 trieu ban.",
-            "SELECT TOP 3 game_name, SUM(num_sales) AS total_sales FROM vw_game_sales_full",
-            [("Wii Sports", 82.74)],
+class TestFillAndVerifyTemplate:
+    SQL = "SELECT TOP 3 game_name, SUM(num_sales) AS total_sales FROM vw_game_sales_full"
+    COLUMNS = ["game_name", "total_sales"]
+    ROWS = [("Wii Sports", 82.74), ("Mario Kart Wii", 37.32)]
+
+    def test_fills_placeholder_with_real_value(self):
+        out = fill_and_verify_template(
+            "{game_name:0} dẫn đầu với {total_sales:0} triệu bản.",
+            self.SQL, self.COLUMNS, self.ROWS,
         )
+        assert out == "Wii Sports dẫn đầu với 82.74 triệu bản."
 
-    def test_passes_when_number_only_in_sql_where(self):
-        check_output(
-            "Nam 2016 co doanh thu cao nhat.",
-            "SELECT * FROM vw_game_sales_full WHERE release_year = 2016",
-            [],
+    def test_fills_multiple_rows(self):
+        out = fill_and_verify_template(
+            "{game_name:0} đứng đầu, theo sau là {game_name:1} với {total_sales:1} triệu bản.",
+            self.SQL, self.COLUMNS, self.ROWS,
         )
+        assert out == "Wii Sports đứng đầu, theo sau là Mario Kart Wii với 37.32 triệu bản."
 
-    def test_raises_on_hallucinated_number(self):
-        with pytest.raises(GuardrailError):
-            check_output(
-                "Wii Sports ban duoc 999.99 trieu ban.",
-                "SELECT TOP 3 game_name, SUM(num_sales) AS total_sales FROM vw_game_sales_full",
-                [("Wii Sports", 82.74)],
-            )
-
-    def test_accepts_vietnamese_decimal_comma_matching_dot_in_result(self):
-        check_output(
-            "Ty le tang truong la 1,27 lan.",
-            "SELECT * FROM vw_game_sales_full",
-            [("1.27",)],
+    def test_value_always_comes_from_real_row_not_llm_text(self):
+        """Trọng tâm của thiết kế mới: LLM chỉ chọn ĐƯỢC ô nào, không chọn được
+        giá trị của ô đó là gì - kể cả khi template "cố tình" ghép sai ngữ cảnh,
+        giá trị điền vào vẫn luôn là dữ liệu thật của đúng ô được tham chiếu."""
+        out = fill_and_verify_template(
+            "{game_name:1} dẫn đầu với {total_sales:1} triệu bản.",
+            self.SQL, self.COLUMNS, self.ROWS,
         )
+        # placeholder tham chieu dong 1 (Mario Kart Wii) - dung ca ten lan so
+        # cua dong 1, khong the nao ra "Mario Kart Wii" ghep voi so cua dong 0.
+        assert out == "Mario Kart Wii dẫn đầu với 37.32 triệu bản."
 
-    def test_no_numbers_in_answer_always_passes(self):
-        check_output(
-            "Khong tim thay du lieu phu hop.",
+    def test_no_rows_plain_text_without_numbers_passes(self):
+        out = fill_and_verify_template(
+            "Không tìm thấy dữ liệu phù hợp.",
             "SELECT * FROM vw_game_sales_full WHERE 1=0",
-            [],
+            [], [],
         )
+        assert out == "Không tìm thấy dữ liệu phù hợp."
 
-    def test_accepts_vietnamese_thousands_separator_matching_plain_int_in_result(self):
-        check_output(
-            "Tong cong ban duoc 1.000.000 ban.",
-            "SELECT SUM(num_sales) FROM vw_game_sales_full",
-            [(1000000,)],
+    def test_allows_number_restated_from_sql_where_clause(self):
+        out = fill_and_verify_template(
+            "Không tìm thấy dữ liệu năm 2016 phù hợp.",
+            "SELECT * FROM vw_game_sales_full WHERE release_year = 2016",
+            [], [],
         )
+        assert out == "Không tìm thấy dữ liệu năm 2016 phù hợp."
 
-    def test_accepts_vietnamese_thousands_separator_with_decimal(self):
-        check_output(
-            "Doanh so dat 1.234.567,89 ban.",
-            "SELECT SUM(num_sales) FROM vw_game_sales_full",
-            [("1234567.89",)],
-        )
-
-    def test_raises_on_hallucinated_thousands_separator_number(self):
+    def test_raises_on_unknown_column_placeholder(self):
         with pytest.raises(GuardrailError):
-            check_output(
-                "Tong cong ban duoc 9.999.999 ban.",
-                "SELECT SUM(num_sales) FROM vw_game_sales_full",
-                [(1000000,)],
+            fill_and_verify_template(
+                "{publisher_name:0} dẫn đầu.",
+                self.SQL, self.COLUMNS, self.ROWS,
             )
+
+    def test_raises_on_out_of_range_row_placeholder(self):
+        with pytest.raises(GuardrailError):
+            fill_and_verify_template(
+                "{game_name:5} dẫn đầu.",
+                self.SQL, self.COLUMNS, self.ROWS,
+            )
+
+    def test_raises_when_llm_types_raw_number_bypassing_placeholder(self):
+        """LLM lach co che placeholder bang cach go thang so vao van ban."""
+        with pytest.raises(GuardrailError):
+            fill_and_verify_template(
+                "Wii Sports dẫn đầu với 999.99 triệu bản.",
+                self.SQL, self.COLUMNS, self.ROWS,
+            )
+
+    def test_none_value_renders_as_placeholder_text_not_python_none(self):
+        out = fill_and_verify_template(
+            "{game_name:0} có doanh số {total_sales:0}.",
+            self.SQL, ["game_name", "total_sales"], [("Unreleased Game", None)],
+        )
+        assert out == "Unreleased Game có doanh số không có dữ liệu."

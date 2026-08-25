@@ -171,16 +171,44 @@ def generate_sql(question: str) -> tuple:
     return sql, usage
 
 
-def explain_result(question: str, sql: str, rows: list) -> tuple:
-    """Trả về (câu trả lời tự nhiên, usage token của lần gọi này)."""
-    # Khong cache: noi dung (rows) khac nhau moi lan goi, khong co prefix
-    # chung de tai su dung.
+def explain_result(question: str, sql: str, columns: list, rows: list) -> tuple:
+    """Trả về (template câu trả lời CHƯA điền số liệu, usage token của lần gọi này).
+
+    Không để LLM tự gõ số/tên thực thể trực tiếp - bắt buộc dùng placeholder
+    {ten_cot:so_dong} tham chiếu đúng ô trong kết quả SQL. Việc điền giá trị
+    thật vào placeholder do guardrails.fill_and_verify_template() làm bằng
+    code (đọc thẳng từ `rows`), không phải từ text LLM viết ra - nên LLM
+    không còn cách nào "bịa" số hay gán nhầm số cho sai thực thể được nữa
+    (khác với cách cũ: LLM viết câu tự do rồi mới regex dò ngược, chỉ bắt
+    được số sai chứ không bắt được số ĐÚNG gán cho thực thể SAI).
+    """
+    if not rows:
+        user = (
+            f"Câu hỏi của người dùng: {question}\n"
+            f"SQL đã chạy: {sql}\n"
+            "Kết quả không có dòng nào.\n\n"
+            "Viết 1 câu tiếng Việt báo không tìm thấy dữ liệu phù hợp. "
+            "Không tự bịa số liệu hay tên game/publisher/khu vực nào."
+        )
+        text, usage = _call_llm(SYSTEM_PROMPT, user)
+        return text.strip(), usage
+
+    sample = "\n".join(
+        f"Dòng {i}: " + ", ".join(f"{col}={val}" for col, val in zip(columns, row))
+        for i, row in enumerate(rows[:20])
+    )
     user = (
         f"Câu hỏi của người dùng: {question}\n"
         f"SQL đã chạy: {sql}\n"
-        f"Kết quả ({len(rows)} dòng đầu): {rows[:20]}\n\n"
-        "Diễn giải kết quả trên thành 1-2 câu trả lời tự nhiên bằng tiếng Việt, "
-        "CHỈ dùng số liệu có trong kết quả, không tự bịa thêm số."
+        f"Cột: {', '.join(columns)}\n"
+        f"Dữ liệu ({len(rows)} dòng đầu, đánh số từ 0):\n{sample}\n\n"
+        "Diễn giải kết quả trên thành 1-2 câu trả lời tự nhiên bằng tiếng Việt. "
+        "BẮT BUỘC: mọi con số VÀ mọi tên thực thể (tên game, publisher, platform, "
+        "khu vực...) lấy từ dữ liệu ở trên phải viết dưới dạng placeholder "
+        "{tên_cột:số_dòng} - KHÔNG được tự gõ số hay tên trực tiếp vào câu trả lời. "
+        "Ví dụ đúng: \"{game_name:0} dẫn đầu với {total_sales:0} triệu bản.\" "
+        "Chỉ dùng đúng tên cột và số dòng có thật trong dữ liệu ở trên, không bịa "
+        "cột/dòng không tồn tại."
     )
     text, usage = _call_llm(SYSTEM_PROMPT, user)
     return text.strip(), usage

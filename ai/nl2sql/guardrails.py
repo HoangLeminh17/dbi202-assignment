@@ -11,9 +11,13 @@ xử lý an toàn).
 Rate limit theo IP nằm ở webapp.py (route /ask), không phải ở module này -
 đây là mối quan tâm tầng HTTP request, không phải tầng nội dung câu hỏi.
 
+Output guardrail (fill_and_verify_template) dùng cơ chế placeholder
+{tên_cột:số_dòng} thay vì validate hậu kiểm câu văn tự do bằng regex - xem
+docstring của hàm đó để biết vì sao (bắt được cả trường hợp số thật nhưng
+gán sai thực thể, không chỉ số bịa hoàn toàn).
+
 Sản xuất thật (nhiều instance/process) cần thêm: rate limit dùng store dùng
-chung (vd Redis) thay vì in-memory per-process như hiện tại, và grounding
-check chặt chẽ hơn (xem ai/NL2SQL_ARCHITECTURE.md mục 4).
+chung (vd Redis) thay vì in-memory per-process như hiện tại.
 """
 import re
 import unicodedata
@@ -88,29 +92,50 @@ def _extract_numbers(text: str) -> set:
     return {_canonicalize_number(tok) for tok in _NUMBER_TOKEN_RE.findall(text)}
 
 
-def check_output(answer_text: str, sql: str, result_values: list) -> None:
-    """Grounding check đơn giản: mọi con số LLM nêu ra phải xuất hiện trong kết quả SQL
-    hoặc trong chính câu SQL (vd năm/điều kiện trong WHERE, LLM nhắc lại từ câu hỏi).
+# {ten_cot:so_dong} - vd {game_name:0}, {total_sales:0}. So dong 0-indexed,
+# khop voi cach danh so trong prompt cua explain_result() (llm_client.py).
+_PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*):(\d+)\}")
 
-    Số được trích xuất theo substring (không ép full-string) để khớp cả trường hợp số
-    nằm trong 1 giá trị text (vd game_name = "Yokai Watch 3"). Dấu phẩy thập phân kiểu
-    Việt (vd "1,27") và dấu chấm phân cách hàng nghìn kiểu Việt (vd "1.000.000") đều
-    được chuẩn hoá về 1 dạng chung trước khi so sánh (xem _canonicalize_number), vì LLM
-    có thể viết số theo kiểu Việt trong khi dữ liệu SQL luôn dùng dấu chấm thập phân,
-    không có phân cách hàng nghìn. Đây là kiểm tra xấp xỉ (so khớp chuỗi số, không parse
-    ngữ nghĩa), đủ để bắt hallucination rõ ràng (LLM tự "bịa" thêm số liệu không có
-    trong kết quả truy vấn).
+
+def fill_and_verify_template(template: str, sql: str, columns: list, rows: list) -> str:
+    """Điền placeholder {tên_cột:số_dòng} bằng giá trị THẬT đọc thẳng từ `rows`
+    (không phải từ text LLM viết) rồi trả về câu trả lời hoàn chỉnh.
+
+    Đây là lớp thay thế check_output() cũ (vốn chỉ so khớp số bằng regex sau
+    khi LLM đã viết xong câu tự do) - cách cũ bắt được số BỊA nhưng KHÔNG bắt
+    được số THẬT bị gán nhầm cho thực thể sai (vd nói "FIFA 17 dẫn đầu với
+    82.74 triệu bản" trong khi 82.74 thực ra là của Wii Sports) vì con số đó
+    vẫn "có thật" trong kết quả, chỉ sai chỗ gán. Với placeholder, giá trị lẫn
+    tên thực thể đều lấy thẳng từ đúng ô dữ liệu LLM tham chiếu - LLM chỉ được
+    chọn ô nào, không được tự quyết định giá trị của ô đó là gì.
+
+    Chặn (raise GuardrailError) khi:
+    - Placeholder tham chiếu cột không tồn tại trong `columns`.
+    - Placeholder tham chiếu số dòng vượt quá `len(rows)`.
+    - Phần văn bản NGOÀI placeholder còn sót chữ số - nghĩa là LLM lách bằng
+      cách gõ thẳng số vào câu thay vì dùng placeholder. Ngoại lệ: số đó xuất
+      hiện y hệt trong chính câu SQL (vd LLM nhắc lại năm trong điều kiện
+      WHERE khi kết quả rỗng) - không phải bịa, chỉ là nhắc lại điều kiện lọc.
     """
-    numbers_in_answer = _extract_numbers(answer_text)
-    if not numbers_in_answer:
-        return
+    col_index = {c: i for i, c in enumerate(columns)}
 
-    allowed_numbers = _extract_numbers(sql)
-    for v in result_values:
-        allowed_numbers.update(_extract_numbers(str(v)))
+    def _replace(m: re.Match) -> str:
+        col, row_idx_s = m.group(1), m.group(2)
+        row_idx = int(row_idx_s)
+        if col not in col_index:
+            raise GuardrailError(f"Câu trả lời tham chiếu cột không tồn tại: '{col}'")
+        if row_idx >= len(rows):
+            raise GuardrailError(f"Câu trả lời tham chiếu dòng không tồn tại: dòng {row_idx}")
+        value = rows[row_idx][col_index[col]]
+        return "không có dữ liệu" if value is None else str(value)
 
-    ungrounded = [n for n in numbers_in_answer if n not in allowed_numbers]
-    if ungrounded:
+    filled = _PLACEHOLDER_RE.sub(_replace, template)
+
+    residual_text = _PLACEHOLDER_RE.sub("", template)
+    leaked_numbers = _extract_numbers(residual_text) - _extract_numbers(sql)
+    if leaked_numbers:
         raise GuardrailError(
-            f"Câu trả lời chứa số liệu không khớp kết quả SQL: {ungrounded}"
+            f"Câu trả lời chứa số không thông qua placeholder dữ liệu thật: {leaked_numbers}"
         )
+
+    return filled
