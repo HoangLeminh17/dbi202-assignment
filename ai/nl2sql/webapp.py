@@ -6,6 +6,9 @@ Trang admin (xem log toàn bộ luồng xử lý): http://127.0.0.1:5050/admin
   - Đăng nhập bằng ADMIN_USER/ADMIN_PASSWORD trong ai/.env.
 """
 import functools
+import threading
+import time
+from collections import defaultdict, deque
 
 from flask import Flask, Response, jsonify, render_template_string, request
 
@@ -13,6 +16,28 @@ from . import agent, db, llm_client, logging_store
 from .config import CONFIG
 
 app = Flask(__name__)
+
+# Rate limit don gian theo IP cho /ask - demo noi bo (1 tien trinh, khong sau
+# proxy) nen luu in-memory la du, KHONG dung X-Forwarded-For (client tu goi
+# header nay de gia mao IP that neu khong co proxy tin cay dung truoc chuan
+# hoa no) - dung thang request.remote_addr. San xuat that voi nhieu instance
+# can chuyen sang store dung chung (vd Redis) thay vi in-memory per-process.
+_RATE_LIMIT_MAX_REQUESTS = 20
+_RATE_LIMIT_WINDOW_SECONDS = 60
+_rate_lock = threading.Lock()
+_rate_log = defaultdict(deque)  # ip -> deque[timestamp giay, tang dan]
+
+
+def _is_rate_limited(ip: str) -> bool:
+    now = time.time()
+    with _rate_lock:
+        q = _rate_log[ip]
+        while q and now - q[0] > _RATE_LIMIT_WINDOW_SECONDS:
+            q.popleft()
+        if len(q) >= _RATE_LIMIT_MAX_REQUESTS:
+            return True
+        q.append(now)
+        return False
 
 
 def require_admin_auth(view):
@@ -592,6 +617,15 @@ def index():
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    if _is_rate_limited(request.remote_addr or "unknown"):
+        return jsonify({
+            "blocked": True,
+            "reason": (
+                f"Bạn gửi quá nhiều câu hỏi (tối đa {_RATE_LIMIT_MAX_REQUESTS} "
+                f"câu / {_RATE_LIMIT_WINDOW_SECONDS}s). Vui lòng thử lại sau."
+            ),
+        }), 429
+
     data = request.get_json(force=True) or {}
     question = (data.get("question") or "").strip()
     if not question:
@@ -637,26 +671,57 @@ ADMIN_PAGE = """
 <style>
   body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 1200px;
          margin: 0 auto; padding: 24px; background: #f6f7f9; }
-  h1 { font-size: 20px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin-bottom: 4px; text-align: center; }
+  .toolbar { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+  .toolbar a {
+    font-size: 12.5px; padding: 6px 14px; border-radius: 999px; border: 1px solid #d6d6d0;
+    background: white; color: #1f2430; text-decoration: none;
+  }
+  .toolbar a:hover { background: #f0f1f5; }
   .stats { display: flex; gap: 12px; margin-bottom: 20px; }
-  .stat { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 12px 18px; }
+  .stat { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 12px 18px;
+          flex: 1; }
   .stat .num { font-size: 22px; font-weight: 700; }
   .stat .label { font-size: 12px; color: #666; }
-  .dashboard { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; }
+  .dashboard { display: flex; gap: 20px; align-items: stretch; margin-bottom: 20px; flex-wrap: wrap; }
+  .dashboard > .donut-card, .dashboard > .metric-card { flex: 1 1 300px; }
   .donut-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 16px 20px;
-                display: flex; align-items: center; gap: 20px; }
+                display: flex; flex-direction: column; }
+  .donut-body { display: flex; align-items: center; gap: 20px; flex: 1; }
+  .metric-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px; padding: 16px 20px;
+                 display: flex; flex-direction: column; }
+  .metric-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .metric-card h2 { font-size: 13px; margin: 0; color: #52514e; font-weight: 600; }
+  .cost-badge { font-size: 12px; font-weight: 700; color: #0ca30c; background: #eaf7ea;
+                border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+  .metric-row { display: flex; gap: 10px; }
+  .metric-tile { flex: 1; background: #f8f8f6; border: 1px solid #ececE6; border-top: 3px solid var(--mc, #ccc);
+                 border-radius: 0 0 6px 6px; padding: 12px 12px; text-align: center; }
+  .metric-tile .v { font-size: 21px; font-weight: 700; color: var(--mc, #1f2430); font-variant-numeric: tabular-nums; }
+  .metric-tile .k { font-size: 10.5px; color: #898781; text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
+  .metric-empty { font-size: 12.5px; color: #b6b3aa; padding: 18px 0; text-align: center; }
+  .lat-viz { display: flex; flex-direction: column; justify-content: center; gap: 14px; flex: 1; }
+  .lat-row { display: flex; align-items: center; gap: 10px; }
+  .lat-row .lbl { width: 28px; font-family: Consolas, monospace; font-size: 11.5px; font-weight: 700; flex-shrink: 0; }
+  .lat-row .track { flex: 1; height: 16px; background: #f0f0ee; border-radius: 8px; overflow: hidden; }
+  .lat-row .fill { height: 100%; border-radius: 8px; }
+  .lat-row .val { font-size: 12.5px; font-weight: 700; color: #1f2430; flex-shrink: 0; min-width: 82px;
+                   text-align: right; font-variant-numeric: tabular-nums; }
   .donut-card h2 { font-size: 13px; margin: 0 0 0 0; color: #52514e; font-weight: 600; }
-  .donut-wrap { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
-  .donut { width: 140px; height: 140px; border-radius: 50%; }
-  .donut-hole { position: absolute; inset: 22px; background: white; border-radius: 50%;
+  .donut-wrap { position: relative; width: 176px; height: 176px; flex-shrink: 0; }
+  .donut { width: 176px; height: 176px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+  .donut-count-label { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+                        font-size: 10.5px; font-weight: 700; color: #111;
+                        white-space: nowrap; pointer-events: none; }
+  .donut-hole { position: absolute; inset: 28px; background: white; border-radius: 50%;
                 display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .donut-hole .n { font-size: 22px; font-weight: 700; color: #0b0b0b; }
   .donut-hole .l { font-size: 10px; color: #898781; }
-  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
-  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .legend { display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; flex: 1; min-width: 0; }
+  .legend .row { display: flex; align-items: center; gap: 9px; cursor: default; }
   .legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-  .legend .name { color: #1f2430; }
-  .legend .count { color: #898781; margin-left: auto; padding-left: 14px; font-variant-numeric: tabular-nums; }
+  .legend .name { color: #1f2430; font-weight: 600; flex: 1; min-width: 0; }
+  .legend .pct { color: #1f2430; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
   table { width: 100%; border-collapse: collapse; background: white; font-size: 12.5px; }
   th, td { border: 1px solid #e2e2e2; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #f0f2f5; position: sticky; top: 0; }
@@ -666,7 +731,6 @@ ADMIN_PAGE = """
   .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
   .badge.ok { background: #e6f4ea; color: #1a7f37; }
   .badge.blocked { background: #fdecea; color: #b3261e; }
-  .toolbar { margin-bottom: 12px; font-size: 13px; }
   .gov-glossary { background: #f0f1fa; border: 1px solid #dcdef5; border-radius: 8px; padding: 10px 14px;
                   margin-bottom: 10px; font-size: 12px; color: #44475a; display: grid;
                   grid-template-columns: repeat(4, 1fr); gap: 4px 16px; }
@@ -680,37 +744,129 @@ ADMIN_PAGE = """
   .gov-card p strong { color: #111; }
   .gov-card ol { margin: 2px 0 0; padding-left: 16px; color: #3a3a3a; }
   .gov-card ol li { margin-bottom: 3px; }
+  .stage-bar-card { background: white; border: 1px solid #e2e2e2; border-radius: 8px;
+                     padding: 14px 18px; margin-bottom: 20px; }
+  .stage-bar-card h2 { font-size: 13px; margin: 0 0 10px; color: #52514e; font-weight: 600; }
+  .stage-bar { display: flex; width: 100%; height: 26px; border-radius: 6px; overflow: hidden;
+               background: #e1e0d9; }
+  .stage-bar .seg { display: flex; align-items: center; justify-content: center; color: white;
+                     font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+  /* Ngoặc TỔNG nằm TRÊN thanh - mở xuống dưới (⎡‾‾⎤), 2 chân trỏ xuống chạm mép thanh */
+  .stage-total { display: flex; flex-direction: column; align-items: center; }
+  .stage-total .total-ms { font-size: 11.5px; font-weight: 700; color: #3a3a3a; margin-bottom: 3px; }
+  .stage-total .bracket { width: 97%; height: 7px; border: 1.5px solid #9c9a90; border-bottom: none;
+                           border-radius: 3px 3px 0 0; }
+  /* Ngoặc từng giai đoạn nằm DƯỚI thanh - mở lên trên (⎣__⎦), 2 chân trỏ lên chạm mép thanh */
+  .stage-dims { display: flex; width: 100%; }
+  .stage-dims .dim { display: flex; flex-direction: column; align-items: center; }
+  .stage-dims .bracket { width: 100%; height: 6px; border-radius: 0 0 3px 3px;
+                          border: 1.5px solid #c7c5bb; border-top: none; box-sizing: border-box; }
+  .stage-dims .ms { margin-top: 3px; font-size: 11px; font-weight: 700; color: #1f2430;
+                     font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stage-legend { display: flex; gap: 18px; margin-top: 14px; font-size: 12.5px; flex-wrap: wrap; }
+  .stage-legend .row { display: flex; align-items: center; gap: 6px; }
+  .stage-legend .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .stage-head { display: flex; justify-content: space-between; align-items: center;
+                flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+  .stage-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+  .stage-filter a.fbtn, .stage-filter button {
+    font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid #d6d6d0; background: white; color: #333; text-decoration: none; cursor: pointer;
+  }
+  .stage-filter a.fbtn:hover, .stage-filter button:hover { background: #f0f1f5; }
+  .stage-filter a.fbtn.active { background: #1f2430; color: white; border-color: #1f2430; }
+  .stage-filter input[type=number] { width: 66px; padding: 3px 6px; border-radius: 6px; border: 1px solid #d6d6d0; font-size: 12px; }
+  .row-pick { transform: scale(1.05); cursor: pointer; }
+  th.pick-col, td.pick-col { text-align: center; width: 30px; }
+  .log-search { background: white; border: 1px solid #e2e2e2; border-radius: 8px;
+                padding: 10px 14px; margin-bottom: 10px; }
+  .log-search-form { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
+  .log-search-form label { display: flex; align-items: center; gap: 6px; color: #52514e; }
+  .log-search-form select, .log-search-form input[type=date] {
+    font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 6px; border: 1px solid #d6d6d0;
+  }
+  .log-search-form button {
+    font: inherit; font-size: 12.5px; padding: 5px 14px; border-radius: 999px;
+    border: 1px solid #d6d6d0; background: white; color: #1f2430; cursor: pointer;
+  }
+  .log-search-form button:hover { background: #f0f1f5; }
+  .log-search-form .clear-link { color: #b3261e; text-decoration: none; }
+  .log-search-form .clear-link:hover { text-decoration: underline; }
+  .log-search-form .result-hint { color: #898781; margin-left: auto; }
 </style>
 </head>
 <body>
-  <h1>Admin monitor - NL2SQL Agent (Group7 Video Game Sales)</h1>
-  <div class="toolbar"><a href="/">&larr; Về trang chat</a> &middot; <a href="/admin">Làm mới</a> &middot; tự làm mới mỗi 45s</div>
+  <h1>Admin Monitor - NL2SQL Agent</h1>
+  <div class="toolbar"><a href="/">&larr; Về trang chat</a><a href="/admin">Làm mới</a></div>
   <div class="stats">
-    <div class="stat"><div class="num">{{ stats.total }}</div><div class="label">Tổng số câu hỏi</div></div>
-    <div class="stat"><div class="num">{{ stats.blocked }}</div><div class="label">Bị chặn (guardrail/validator)</div></div>
-    <div class="stat"><div class="num">{{ stats.avg_ms }} ms</div><div class="label">Thời gian xử lý trung bình (câu thành công)</div></div>
+    <div class="stat"><div class="num">{{ stats.total }}</div><div class="label">💬 Tổng số câu hỏi</div></div>
+    <div class="stat"><div class="num">{{ stats.blocked }}</div><div class="label">🛡️ Bị chặn (guardrail/validator)</div></div>
+    <div class="stat"><div class="num">{{ stats.avg_ms }} ms</div><div class="label">⏱️ Thời gian xử lý trung bình (câu thành công)</div></div>
     <div class="stat"><div class="num">👍 {{ feedback_stats.up }} / 👎 {{ feedback_stats.down }}</div><div class="label">Đánh giá của user (thumbs up/down)</div></div>
   </div>
   <div class="dashboard">
     <div class="donut-card">
-      <div class="donut-wrap">
-        <div class="donut" style="background: {{ donut_gradient }};" role="img"
-             aria-label="Tỷ lệ request theo trạng thái"></div>
-        <div class="donut-hole"><div class="n">{{ donut_total }}</div><div class="l">request</div></div>
-      </div>
-      <div class="legend">
-        {% if donut_slices %}
+      <div class="metric-head"><h2>📊 Trạng thái request</h2></div>
+      <div class="donut-body">
+        <div class="donut-wrap">
+          <div class="donut" style="background: {{ donut_gradient }};" role="img"
+               aria-label="Tỷ lệ request theo trạng thái"></div>
           {% for s in donut_slices %}
-          <div class="row">
-            <span class="swatch" style="background: {{ s.color }};"></span>
-            <span class="name">{{ s.label }}</span>
-            <span class="count">{{ s.count }} ({{ s.pct }}%)</span>
-          </div>
+          <div class="donut-count-label" style="transform: translate(calc(-50% + {{ s.label_x }}px), calc(-50% + {{ s.label_y }}px));">{{ s.count }}</div>
           {% endfor %}
-        {% else %}
-          <div class="row"><span class="name">Chưa có dữ liệu.</span></div>
+          <div class="donut-hole"><div class="n">{{ donut_total }}</div><div class="l">request</div></div>
+        </div>
+        <div class="legend">
+          {% if donut_slices %}
+            {% for s in donut_slices %}
+            <div class="row" title="{{ s.detail }}">
+              <span class="swatch" style="background: {{ s.color }};"></span>
+              <span class="name">{{ s.label }}</span>
+              <span class="pct">{{ s.pct }}%</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="row"><span class="name">Chưa có dữ liệu.</span></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-head">
+        <h2 title="Thang màu tính theo % ngân sách timeout của pipeline (2 lần gọi LLM + 1 lần query DB) - không phải so P50/P90/P99 với nhau, để phản ánh đúng nhanh/chậm thực tế.">⏱ Độ trễ theo percentile</h2>
+      </div>
+      {% if latency_bars %}
+      <div class="lat-viz">
+        {% for b in latency_bars %}
+        <div class="lat-row">
+          <span class="lbl" style="color: {{ b.color }};">{{ b.label }}</span>
+          <div class="track"><div class="fill" style="width: {{ b.pct }}%; background: {{ b.color }};"></div></div>
+          <span class="val">{{ b.ms }} ms</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="metric-empty">Chưa có dữ liệu</div>
+      {% endif %}
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-head">
+        <h2>🪙 Token &amp; chi phí</h2>
+        {% if cost_estimate %}
+          <span class="cost-badge" title="Theo giá cấu hình trong .env, trên {{ token_stats.requests_with_usage }} request có gọi LLM">≈ ${{ '%.4f'|format(cost_estimate) }}</span>
         {% endif %}
       </div>
+      {% if token_stats.requests_with_usage %}
+      <div class="metric-row">
+        <div class="metric-tile"><div class="v">{{ '{:,}'.format(token_stats.input_tokens) }}</div><div class="k">Input</div></div>
+        <div class="metric-tile"><div class="v">{{ '{:,}'.format(token_stats.output_tokens) }}</div><div class="k">Output</div></div>
+        <div class="metric-tile" title="Token đọc từ cache (rẻ hơn nhiều so với input token thường)"><div class="v">{{ '{:,}'.format(token_stats.cache_read_tokens) }}</div><div class="k">Cache-read</div></div>
+      </div>
+      {% else %}
+      <div class="metric-empty">Chưa có dữ liệu</div>
+      {% endif %}
     </div>
   </div>
 
@@ -751,9 +907,89 @@ ADMIN_PAGE = """
     </div>
   </div>
 
+  <div class="stage-bar-card">
+    <div class="stage-head">
+      <h2 style="margin:0;">Thời gian xử lý trung bình theo giai đoạn</h2>
+      <div class="stage-filter" id="stageFilter">
+        {% for preset in ['10', '50', '100', 'all'] %}
+          <a class="fbtn {{ 'active' if stage_n == preset else '' }}" href="/admin?n={{ preset }}" data-n="{{ preset }}">{{ 'Tất cả' if preset == 'all' else preset + ' gần nhất' }}</a>
+        {% endfor %}
+        <form method="get" action="/admin" id="stageCustomForm" style="display:inline-flex; gap:4px;">
+          <input type="number" name="n" min="1" placeholder="Tuỳ chỉnh N">
+          <button type="submit">Xem</button>
+        </form>
+      </div>
+    </div>
+    {% if stage_total %}
+    <div class="stage-total">
+      <div class="total-ms" id="stageTotalMs">Tổng: {{ stage_total }} ms</div>
+      <div class="bracket"></div>
+    </div>
+    <div class="stage-bar" id="stageBar" role="img" aria-label="Phân bổ thời gian xử lý theo từng giai đoạn">
+      {% for s in stage_segments %}
+        {% if s.ms > 0 %}
+        <div class="seg" style="width: {{ s.pct }}%; background: {{ s.color }};"
+             title="{{ s.label }}: {{ s.ms }} ms ({{ s.pct }}%)">
+          {% if s.pct >= 8 %}{{ s.pct }}%{% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div class="stage-dims" id="stageDims">
+      {% for s in stage_segments %}
+        {% if s.ms > 0 %}
+        <div class="dim" style="width: {{ s.pct }}%;">
+          <div class="bracket" style="border-color: {{ s.color }};"></div>
+          <div class="ms">{{ s.ms }} ms</div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div class="stage-legend">
+      {% for s in stage_segments %}
+      <div class="row">
+        <span class="swatch" style="background: {{ s.color }};"></span>
+        <span>{{ s.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      window.__stageDefaultAvg = {
+        gen: {{ stage_segments[0].ms }},
+        db: {{ stage_segments[1].ms }},
+        explain: {{ stage_segments[2].ms }}
+      };
+    </script>
+    {% else %}
+    <div style="font-size: 12.5px; color: #898781;">Chưa có dữ liệu.</div>
+    {% endif %}
+  </div>
+
+  <div class="log-search">
+    <form method="get" action="/admin" class="log-search-form">
+      {% if stage_n %}<input type="hidden" name="n" value="{{ stage_n }}">{% endif %}
+      <label>Trạng thái
+        <select name="status">
+          <option value="" {{ 'selected' if not status_filter else '' }}>Tất cả</option>
+          <option value="ok" {{ 'selected' if status_filter == 'ok' else '' }}>Thành công</option>
+          <option value="blocked" {{ 'selected' if status_filter == 'blocked' else '' }}>Bị chặn theo thiết kế</option>
+          <option value="error" {{ 'selected' if status_filter == 'error' else '' }}>Lỗi hạ tầng</option>
+        </select>
+      </label>
+      <label>Từ ngày <input type="date" name="date_from" value="{{ date_from }}"></label>
+      <label>Đến ngày <input type="date" name="date_to" value="{{ date_to }}"></label>
+      <button type="submit">Tìm</button>
+      {% if status_filter or date_from or date_to %}
+        <a class="clear-link" href="/admin{{ '?n=' + stage_n if stage_n else '' }}">Xoá lọc</a>
+      {% endif %}
+      <span class="result-hint">{{ logs|length }} dòng khớp (tối đa 200)</span>
+    </form>
+  </div>
+
   <table>
     <thead>
       <tr>
+        <th class="pick-col">Chọn</th>
         <th>Thời gian</th><th>Câu hỏi</th><th>Trạng thái</th><th>Đánh giá</th><th>SQL đã sinh</th>
         <th>SQL sau validate</th><th>Số dòng</th><th>Câu trả lời</th>
         <th>LLM sinh SQL (ms)</th><th>DB exec (ms)</th><th>LLM diễn giải (ms)</th><th>Tổng (ms)</th>
@@ -762,6 +998,13 @@ ADMIN_PAGE = """
     <tbody>
     {% for r in logs %}
       <tr class="{{ 'blocked' if r.blocked else '' }}">
+        <td class="pick-col">
+          {% if not r.blocked %}
+          <input type="checkbox" class="row-pick" title="Dùng dòng này để tính thanh breakdown ở trên"
+                 data-ms-gen="{{ r.ms_generate_sql or 0 }}" data-ms-db="{{ r.ms_db_exec or 0 }}"
+                 data-ms-explain="{{ r.ms_explain or 0 }}">
+          {% endif %}
+        </td>
         <td>{{ r.created_at }}</td>
         <td>{{ r.question }}</td>
         <td>
@@ -784,6 +1027,134 @@ ADMIN_PAGE = """
     {% endfor %}
     </tbody>
   </table>
+
+  <script>
+  (function () {
+    var STAGE_META = [
+      { key: 'gen', label: 'LLM sinh SQL', color: '#4f46e5' },
+      { key: 'db', label: 'DB thực thi', color: '#0891b2' },
+      { key: 'explain', label: 'LLM diễn giải', color: '#d97706' }
+    ];
+    var boxes = document.querySelectorAll('.row-pick');
+    var bar = document.getElementById('stageBar');
+    var dims = document.getElementById('stageDims');
+    var totalMs = document.getElementById('stageTotalMs');
+    var filterEl = document.getElementById('stageFilter');
+    var customForm = document.getElementById('stageCustomForm');
+
+    function render(avg) {
+      if (!bar || !dims || !totalMs) return;
+      var total = avg.gen + avg.db + avg.explain;
+      bar.innerHTML = '';
+      dims.innerHTML = '';
+      STAGE_META.forEach(function (m) {
+        var ms = avg[m.key];
+        if (ms <= 0) return;
+        var pct = total ? (ms / total * 100) : 0;
+        var seg = document.createElement('div');
+        seg.className = 'seg';
+        seg.style.width = pct + '%';
+        seg.style.background = m.color;
+        seg.title = m.label + ': ' + ms + ' ms (' + pct.toFixed(1) + '%)';
+        if (pct >= 8) seg.textContent = pct.toFixed(1) + '%';
+        bar.appendChild(seg);
+
+        var dim = document.createElement('div');
+        dim.className = 'dim';
+        dim.style.width = pct + '%';
+        var bracket = document.createElement('div');
+        bracket.className = 'bracket';
+        bracket.style.borderColor = m.color;
+        var msLabel = document.createElement('div');
+        msLabel.className = 'ms';
+        msLabel.textContent = ms + ' ms';
+        dim.appendChild(bracket);
+        dim.appendChild(msLabel);
+        dims.appendChild(dim);
+      });
+      totalMs.textContent = 'Tổng: ' + total + ' ms';
+    }
+
+    // --- tick tay tung dong trong bang log: tinh lai avg tu cac dong da chon ---
+    function recomputeFromCheckboxes() {
+      var picked = Array.prototype.filter.call(boxes, function (c) { return c.checked; });
+      if (!picked.length) {
+        render(window.__stageDefaultAvg);
+        return;
+      }
+      var sums = { gen: 0, db: 0, explain: 0 };
+      picked.forEach(function (c) {
+        sums.gen += parseFloat(c.getAttribute('data-ms-gen') || 0);
+        sums.db += parseFloat(c.getAttribute('data-ms-db') || 0);
+        sums.explain += parseFloat(c.getAttribute('data-ms-explain') || 0);
+      });
+      var n = picked.length;
+      var avg = {
+        gen: Math.round(sums.gen / n),
+        db: Math.round(sums.db / n),
+        explain: Math.round(sums.explain / n)
+      };
+      render(avg);
+    }
+    boxes.forEach(function (c) { c.addEventListener('change', recomputeFromCheckboxes); });
+
+    // --- nut/form chon N request gan nhat: fetch() thay vi dieu huong ca trang,
+    // de bam khong bi reload/nhay len dau trang ---
+    function setActiveButton(nStr) {
+      if (!filterEl) return;
+      Array.prototype.forEach.call(filterEl.querySelectorAll('.fbtn'), function (a) {
+        a.classList.toggle('active', a.getAttribute('data-n') === nStr);
+      });
+    }
+
+    function applyStageData(data) {
+      if (!bar) { window.location.href = '/admin?n=' + encodeURIComponent(data.n); return; }
+      var avg = {
+        gen: data.segments[0] ? data.segments[0].ms : 0,
+        db: data.segments[1] ? data.segments[1].ms : 0,
+        explain: data.segments[2] ? data.segments[2].ms : 0,
+      };
+      window.__stageDefaultAvg = avg;
+      Array.prototype.forEach.call(boxes, function (c) { c.checked = false; });
+      render(avg);
+      setActiveButton(data.n);
+    }
+
+    function loadStage(n, pushUrl) {
+      fetch('/admin/stage-bar?n=' + encodeURIComponent(n))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          applyStageData(data);
+          if (pushUrl !== false) {
+            var url = new URL(window.location);
+            url.searchParams.set('n', data.n);
+            history.pushState({ n: data.n }, '', url);
+          }
+        })
+        .catch(function () { window.location.href = '/admin?n=' + encodeURIComponent(n); });
+    }
+
+    if (filterEl) {
+      Array.prototype.forEach.call(filterEl.querySelectorAll('.fbtn'), function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          loadStage(a.getAttribute('data-n'));
+        });
+      });
+    }
+    if (customForm) {
+      customForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var val = customForm.querySelector('input[name=n]').value;
+        if (val) loadStage(val);
+      });
+    }
+    window.addEventListener('popstate', function () {
+      var n = new URL(window.location).searchParams.get('n') || '10';
+      loadStage(n, false);
+    });
+  })();
+  </script>
 </body>
 </html>
 """
@@ -798,9 +1169,9 @@ ADMIN_PAGE = """
 # khong phai boi vi status duoc mien kiem tra CVD). Chi tiet tung loai chan
 # (injection/ngoai pham vi/SQL loi/hallucination) van xem day du o bang log.
 STATUS_META = [
-    ("ok", "Thành công", "#0ca30c"),
-    ("blocked_by_design", "Bị chặn theo thiết kế (guardrail/validator)", "#fab219"),
-    ("service_error", "Lỗi hạ tầng (timeout/mất kết nối)", "#d03b3b"),
+    ("ok", "Thành công", "Guardrail/validator không chặn, trả lời bình thường", "#0ca30c"),
+    ("blocked_by_design", "Bị chặn theo thiết kế", "Guardrail hoặc SQL validator chủ động chặn", "#fab219"),
+    ("service_error", "Lỗi hạ tầng", "Timeout / mất kết nối LLM hoặc database", "#d03b3b"),
 ]
 
 _BLOCKED_BY_DESIGN = {
@@ -819,19 +1190,29 @@ def _build_donut():
     total = sum(counts.values())
 
     slices = []
-    for status, label, color in STATUS_META:
+    for status, label, detail, color in STATUS_META:
         n = counts.get(status, 0)
         if n:
             slices.append(
-                {"status": status, "label": label, "color": color, "count": n,
-                 "pct": round(n / total * 100, 1) if total else 0}
+                {"status": status, "label": label, "detail": detail, "color": color,
+                 "count": n, "pct": round(n / total * 100, 1) if total else 0}
             )
 
+    # Dat SO LUONG (khong phai %) ngay tren vanh mau - % chi hien o legend, tranh
+    # trung lap thong tin. Ban kinh giua vanh: donut rong 176px, lo giua inset
+    # 28px -> vanh tu r=60 den r=88, lay r=74 lam tam vanh de dat nhan.
+    import math
+
+    RING_MID_R = 74
     stops = []
     angle = 0.0
     for s in slices:
-        start, end = angle, angle + (s["count"] / total * 360 if total else 0)
+        span = (s["count"] / total * 360) if total else 0
+        start, end = angle, angle + span
         stops.append(f"{s['color']} {start:.2f}deg {end:.2f}deg")
+        mid_rad = math.radians((start + end) / 2)
+        s["label_x"] = round(RING_MID_R * math.sin(mid_rad), 1)
+        s["label_y"] = round(-RING_MID_R * math.cos(mid_rad), 1)
         angle = end
     gradient_css = (
         "conic-gradient(" + ", ".join(stops) + ")" if stops else "#e1e0d9"
@@ -839,13 +1220,123 @@ def _build_donut():
     return slices, gradient_css, total
 
 
+# 3 giai đoạn của pipeline (agent.py): LLM sinh SQL -> DB thực thi -> LLM diễn
+# giải kết quả. Cùng dùng bộ 3 màu categorical tách biệt donut/status ở trên để
+# tránh nhầm 2 nhóm biểu đồ khác ý nghĩa với nhau.
+STAGE_META = [
+    ("generate_sql", "LLM sinh SQL", "#4f46e5"),
+    ("db_exec", "DB thực thi", "#0891b2"),
+    ("explain", "LLM diễn giải", "#d97706"),
+]
+
+
+# Preset cho bo loc "N request thanh cong gan nhat" tren thanh breakdown thoi
+# gian - "10" la mac dinh (mau nho, phan anh dung hieu nang HIEN TAI, khong bi
+# cac request rat cu truoc khi toi uu index/prompt keo lech trung binh).
+_STAGE_N_DEFAULT = "10"
+_STAGE_N_PRESETS = {"10", "50", "100", "all"}
+
+
+def _parse_stage_n(raw: str) -> tuple:
+    """Tra ve (limit, label) - limit=None nghia la khong gioi han (tat ca)."""
+    raw = (raw or _STAGE_N_DEFAULT).strip().lower()
+    if raw == "all":
+        return None, "all"
+    try:
+        n = int(raw)
+        if n > 0:
+            return n, str(n)
+    except ValueError:
+        pass
+    return 10, "10"
+
+
+def _build_stage_bar(limit: int = None):
+    avg = logging_store.fetch_stage_avg_ms(limit=limit)
+    count = avg.pop("count")
+    total = sum(avg.values())
+    segments = [
+        {
+            "label": label,
+            "color": color,
+            "ms": avg[key],
+            "pct": round(avg[key] / total * 100, 1) if total else 0,
+        }
+        for key, label, color in STAGE_META
+    ]
+    return segments, total, count
+
+
+@app.route("/admin/stage-bar")
+@require_admin_auth
+def admin_stage_bar():
+    """JSON cho bộ lọc N-gần-nhất trên /admin - gọi bằng fetch() từ JS thay vì
+    điều hướng cả trang, để bấm nút không bị reload/nhảy lên đầu trang.
+    """
+    stage_limit, stage_n = _parse_stage_n(request.args.get("n"))
+    segments, total, count = _build_stage_bar(limit=stage_limit)
+    return jsonify({
+        "n": stage_n,
+        "count": count,
+        "total": total,
+        "segments": segments,
+    })
+
+
+def _cost_estimate(token_stats: dict) -> float:
+    """None nếu chưa cấu hình giá trong .env (xem config.py) - trả về số $0
+    trong trường hợp đó sẽ trông như 1 con số thật, gây hiểu lầm là miễn phí."""
+    if not CONFIG.price_per_1m_input and not CONFIG.price_per_1m_output:
+        return None
+    return (
+        token_stats["input_tokens"] * CONFIG.price_per_1m_input
+        + token_stats["output_tokens"] * CONFIG.price_per_1m_output
+    ) / 1_000_000
+
+
+# Ngan sach thoi gian toi da 1 request co the chay truoc khi CHINH HE THONG tu
+# timeout: 2 lan goi LLM (generate_sql + explain_result, moi lan toi da
+# llm_client.REQUEST_TIMEOUT_SECONDS) + 1 lan query DB (CONFIG.query_timeout_seconds).
+# Dung moc nay lam "thang do tuyet doi" cho bieu do do tre thay vi so P50/P90/P99
+# VOI NHAU - neu chi so sanh noi bo, hinh dang 3 thanh se LUON giong nhau bat ke
+# he thong dang nhanh hay cham, khong tra loi duoc "vay la tot hay xau".
+_LATENCY_CEILING_MS = (llm_client.REQUEST_TIMEOUT_SECONDS * 2 + CONFIG.query_timeout_seconds) * 1000
+
+
+def _latency_bars(percentiles: dict) -> list:
+    bars = []
+    for label, val in (("P50", percentiles["p50"]), ("P90", percentiles["p90"]), ("P99", percentiles["p99"])):
+        ratio = (val / _LATENCY_CEILING_MS) if _LATENCY_CEILING_MS else 0
+        if ratio < 0.33:
+            color = "#0ca30c"
+        elif ratio < 0.66:
+            color = "#fab219"
+        else:
+            color = "#d03b3b"
+        bars.append({"label": label, "ms": val, "pct": max(min(ratio * 100, 100), 3), "color": color})
+    return bars
+
+
 @app.route("/admin")
 @require_admin_auth
 def admin():
-    logs = logging_store.fetch_recent(limit=200)
+    status_filter = (request.args.get("status") or "").strip()
+    date_from = (request.args.get("date_from") or "").strip()
+    date_to = (request.args.get("date_to") or "").strip()
+    logs = logging_store.fetch_recent(
+        limit=200,
+        status=status_filter or None,
+        date_from=date_from or None,
+        date_to=date_to or None,
+    )
     stats = logging_store.fetch_stats()
     feedback_stats = logging_store.fetch_feedback_stats()
     donut_slices, donut_gradient, donut_total = _build_donut()
+    stage_limit, stage_n = _parse_stage_n(request.args.get("n"))
+    stage_segments, stage_total, stage_count = _build_stage_bar(limit=stage_limit)
+    percentiles = logging_store.fetch_latency_percentiles()
+    latency_bars = _latency_bars(percentiles) if percentiles["count"] else []
+    token_stats = logging_store.fetch_token_stats()
     try:
         freshness = db.get_data_freshness()
     except Exception as exc:
@@ -858,6 +1349,17 @@ def admin():
         donut_slices=donut_slices,
         donut_gradient=donut_gradient,
         donut_total=donut_total,
+        stage_segments=stage_segments,
+        stage_total=stage_total,
+        stage_count=stage_count,
+        stage_n=stage_n,
+        percentiles=percentiles,
+        latency_bars=latency_bars,
+        token_stats=token_stats,
+        cost_estimate=_cost_estimate(token_stats),
+        status_filter=status_filter,
+        date_from=date_from,
+        date_to=date_to,
         model_info=llm_client.get_model_info(),
         freshness=freshness,
     )
