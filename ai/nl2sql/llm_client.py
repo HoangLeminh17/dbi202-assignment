@@ -88,7 +88,7 @@ def _generate_openai(system, user: str) -> tuple:
         ],
     )
     # OpenAI tu dong cache prefix >1024 token phia server, khong can code them.
-    return resp.choices[0].message.content, None
+    return resp.choices[0].message.content, resp.usage
 
 
 def _generate_gemini(system, user: str) -> tuple:
@@ -103,7 +103,7 @@ def _generate_gemini(system, user: str) -> tuple:
     )
     # Gemini context caching can API rieng (CachedContent, co phi luu theo gio)
     # - chua cai o day, ngoai pham vi thay doi nay.
-    return resp.text, None
+    return resp.text, resp.usage_metadata
 
 
 _PROVIDERS = {
@@ -113,15 +113,49 @@ _PROVIDERS = {
 }
 
 
-def _call_llm(system, user: str) -> str:
+def _normalize_usage(provider: str, usage) -> dict:
+    """Quy ve 1 dang chung {input_tokens, output_tokens, cache_read_tokens} -
+    moi provider dat ten field khac nhau trong response usage. Tra ve None cho
+    field nao provider khong bao cao (vd Gemini/OpenAI khong tach rieng
+    cache-read nhu Anthropic) thay vi doan bua bang 0, de phan biet duoc
+    "khong co du lieu" voi "co du lieu va bang 0".
+    """
+    if usage is None:
+        return {"input_tokens": None, "output_tokens": None, "cache_read_tokens": None}
+    if provider == "anthropic":
+        return {
+            "input_tokens": getattr(usage, "input_tokens", None),
+            "output_tokens": getattr(usage, "output_tokens", None),
+            "cache_read_tokens": getattr(usage, "cache_read_input_tokens", None),
+        }
+    if provider == "openai":
+        return {
+            "input_tokens": getattr(usage, "prompt_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None),
+            "cache_read_tokens": getattr(
+                getattr(usage, "prompt_tokens_details", None), "cached_tokens", None
+            ),
+        }
+    if provider == "gemini":
+        return {
+            "input_tokens": getattr(usage, "prompt_token_count", None),
+            "output_tokens": getattr(usage, "candidates_token_count", None),
+            "cache_read_tokens": getattr(usage, "cached_content_token_count", None),
+        }
+    return {"input_tokens": None, "output_tokens": None, "cache_read_tokens": None}
+
+
+def _call_llm(system, user: str) -> tuple:
     provider = CONFIG.llm_provider.lower()
     if provider not in _PROVIDERS:
         raise ValueError(f"LLM_PROVIDER không hỗ trợ: {provider}")
-    text, _usage = _PROVIDERS[provider](system, user)
-    return text
+    text, usage = _PROVIDERS[provider](system, user)
+    return text, _normalize_usage(provider, usage)
 
 
-def generate_sql(question: str) -> str:
+def generate_sql(question: str) -> tuple:
+    """Trả về (câu SQL, usage token của lần gọi này) - usage phục vụ tracking
+    chi phí trên /admin (xem logging_store.fetch_token_stats)."""
     # cache_control tren block system nay - Claude cache lai schema+few-shot,
     # cac cau hoi sau chi tra tien full cho phan "Cau hoi: ..." nho o duoi.
     system = [
@@ -132,11 +166,13 @@ def generate_sql(question: str) -> str:
         }
     ]
     user = f"Câu hỏi: {question}\nChỉ trả lời bằng 1 câu SQL, không markdown, không giải thích."
-    raw = _call_llm(system, user)
-    return raw.strip().strip("`").removeprefix("sql").strip()
+    raw, usage = _call_llm(system, user)
+    sql = raw.strip().strip("`").removeprefix("sql").strip()
+    return sql, usage
 
 
-def explain_result(question: str, sql: str, rows: list) -> str:
+def explain_result(question: str, sql: str, rows: list) -> tuple:
+    """Trả về (câu trả lời tự nhiên, usage token của lần gọi này)."""
     # Khong cache: noi dung (rows) khac nhau moi lan goi, khong co prefix
     # chung de tai su dung.
     user = (
@@ -146,4 +182,5 @@ def explain_result(question: str, sql: str, rows: list) -> str:
         "Diễn giải kết quả trên thành 1-2 câu trả lời tự nhiên bằng tiếng Việt, "
         "CHỈ dùng số liệu có trong kết quả, không tự bịa thêm số."
     )
-    return _call_llm(SYSTEM_PROMPT, user).strip()
+    text, usage = _call_llm(SYSTEM_PROMPT, user)
+    return text.strip(), usage

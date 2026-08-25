@@ -72,6 +72,17 @@ def ask(question: str) -> AgentResult:
     t_start = _now_ms()
     ms_generate_sql = ms_db_exec = ms_explain = None
     raw_sql = ""
+    # Cong don usage token qua ca 2 lan goi LLM (sinh SQL + dien giai) trong 1
+    # request - None nghia la provider khong bao cao (xem
+    # llm_client._normalize_usage), giu None thay vi 0 de khong bien "khong co
+    # du lieu" thanh "co du lieu = 0" khi hien thi tren /admin.
+    usage_totals = {"input_tokens": None, "output_tokens": None, "cache_read_tokens": None}
+
+    def _add_usage(usage: dict) -> None:
+        for key, val in usage.items():
+            if val is None:
+                continue
+            usage_totals[key] = (usage_totals[key] or 0) + val
 
     def _save(blocked: bool, block_stage: str = None, reason: str = "") -> None:
         try:
@@ -91,6 +102,9 @@ def ask(question: str) -> AgentResult:
                 ms_db_exec=ms_db_exec,
                 ms_explain=ms_explain,
                 ms_total=int(_now_ms() - t_start),
+                input_tokens=usage_totals["input_tokens"],
+                output_tokens=usage_totals["output_tokens"],
+                cache_read_tokens=usage_totals["cache_read_tokens"],
             )
         except Exception:
             logger.exception("Ghi log vào logs.db thất bại (bỏ qua, không chặn response)")
@@ -105,7 +119,8 @@ def ask(question: str) -> AgentResult:
 
     try:
         t0 = _now_ms()
-        raw_sql = llm_client.generate_sql(question)
+        raw_sql, usage = llm_client.generate_sql(question)
+        _add_usage(usage)
         ms_generate_sql = int(_now_ms() - t0)
         logger.info("LLM sinh SQL: %s", raw_sql)
 
@@ -133,7 +148,8 @@ def ask(question: str) -> AgentResult:
         logger.info("Kết quả: %d dòng", len(rows))
 
         t0 = _now_ms()
-        answer = llm_client.explain_result(question, safe_sql, rows)
+        answer, usage = llm_client.explain_result(question, safe_sql, rows)
+        _add_usage(usage)
         ms_explain = int(_now_ms() - t0)
     except Exception as exc:  # timeout, mất mạng, DB lỗi, provider API lỗi...
         logger.exception("Lỗi hạ tầng khi xử lý câu hỏi")

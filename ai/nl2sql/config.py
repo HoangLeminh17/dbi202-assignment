@@ -31,5 +31,12 @@ class Config:
     admin_user: str = os.getenv("ADMIN_USER", "admin")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
 
+    # Gia tien tu dien qua .env (USD / 1 trieu token) - KHONG hardcode gia that
+    # trong code vi gia cua provider thay doi theo thoi gian va theo model, de
+    # sai gia se hien thi chi phi sai lech that. Mac dinh 0 = "chua cau hinh",
+    # /admin se hien "chưa cấu hình giá" thay vi mot con so $0.00 gay hieu lam.
+    price_per_1m_input: float = float(os.getenv("PRICE_PER_1M_INPUT_TOKENS") or 0)
+    price_per_1m_output: float = float(os.getenv("PRICE_PER_1M_OUTPUT_TOKENS") or 0)
+
 
 CONFIG = Config()

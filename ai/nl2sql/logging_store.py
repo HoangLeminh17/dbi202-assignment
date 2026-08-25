@@ -39,13 +39,19 @@ CREATE TABLE IF NOT EXISTS request_logs (
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.execute(_SCHEMA)
-    # feedback duoc them sau ban dau (CREATE TABLE IF NOT EXISTS khong tu
-    # them cot moi vao bang cu da ton tai) - migrate bang ALTER, bo qua neu
-    # cot da co san.
-    try:
-        conn.execute("ALTER TABLE request_logs ADD COLUMN feedback TEXT")
-    except sqlite3.OperationalError:
-        pass
+    # feedback + cac cot token duoc them sau ban dau (CREATE TABLE IF NOT
+    # EXISTS khong tu them cot moi vao bang cu da ton tai) - migrate bang
+    # ALTER, bo qua loi neu cot da co san.
+    for ddl in (
+        "ALTER TABLE request_logs ADD COLUMN feedback TEXT",
+        "ALTER TABLE request_logs ADD COLUMN input_tokens INTEGER",
+        "ALTER TABLE request_logs ADD COLUMN output_tokens INTEGER",
+        "ALTER TABLE request_logs ADD COLUMN cache_read_tokens INTEGER",
+    ):
+        try:
+            conn.execute(ddl)
+        except sqlite3.OperationalError:
+            pass
     return conn
 
 
@@ -95,12 +101,40 @@ def fetch_feedback_stats() -> dict:
         conn.close()
 
 
-def fetch_recent(limit: int = 200) -> list:
+def fetch_recent(
+    limit: int = 200, status: str = None, date_from: str = None, date_to: str = None
+) -> list:
+    """status: None/"" = tất cả; "ok" = thành công; "blocked" = bị chặn theo
+    thiết kế (guardrail/validator); "error" = lỗi hạ tầng (service_error) -
+    cùng cách nhóm 3 trạng thái với donut chart ở trên (_build_donut).
+    date_from/date_to: chuỗi "YYYY-MM-DD" - so sánh trực tiếp theo prefix của
+    created_at (ISO 8601 nên so sánh chuỗi vẫn đúng thứ tự thời gian, không
+    cần parse datetime).
+    """
+    conditions = []
+    params = []
+    if status == "ok":
+        conditions.append("blocked = 0")
+    elif status == "blocked":
+        conditions.append(
+            "block_stage IN ('input_guardrail', 'llm_not_applicable', 'sql_validator', 'output_guardrail')"
+        )
+    elif status == "error":
+        conditions.append("block_stage = 'service_error'")
+    if date_from:
+        conditions.append("created_at >= ?")
+        params.append(date_from)
+    if date_to:
+        conditions.append("created_at <= ?")
+        params.append(date_to + "T23:59:59")
+    where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
     conn = _connect()
     try:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT * FROM request_logs ORDER BY id DESC LIMIT ?", (limit,)
+            f"SELECT * FROM request_logs {where_sql} ORDER BY id DESC LIMIT ?",
+            params + [limit],
         ).fetchall()
         return [dict(r) for r in rows]
     finally:
@@ -118,6 +152,107 @@ def fetch_stats() -> dict:
             "SELECT AVG(ms_total) FROM request_logs WHERE blocked = 0"
         ).fetchone()[0]
         return {"total": total, "blocked": blocked, "avg_ms": round(avg_ms or 0)}
+    finally:
+        conn.close()
+
+
+def fetch_stage_avg_ms(limit: int = None) -> dict:
+    """Trung bình thời gian từng giai đoạn (LLM sinh SQL / DB thực thi / LLM diễn
+    giải) tính trên các request THÀNH CÔNG (blocked = 0) - phục vụ thanh breakdown
+    thời gian trên /admin.
+
+    limit: chỉ tính trên N request thành công GẦN NHẤT (theo id giảm dần) - None
+    nghĩa là tính trên toàn bộ. Cho phép người xem /admin tự chọn cỡ mẫu (10/50/
+    100/tất cả) thay vì luôn cố định trên toàn bộ lịch sử, vì trung bình trên toàn
+    bộ dễ bị các request rất cũ (trước khi tối ưu index/prompt) kéo lệch.
+    """
+    conn = _connect()
+    try:
+        if limit:
+            row = conn.execute(
+                """
+                SELECT AVG(ms_generate_sql), AVG(ms_db_exec), AVG(ms_explain), COUNT(*)
+                FROM (
+                    SELECT ms_generate_sql, ms_db_exec, ms_explain
+                    FROM request_logs
+                    WHERE blocked = 0
+                    ORDER BY id DESC
+                    LIMIT ?
+                )
+                """,
+                (limit,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                """
+                SELECT AVG(ms_generate_sql), AVG(ms_db_exec), AVG(ms_explain), COUNT(*)
+                FROM request_logs
+                WHERE blocked = 0
+                """
+            ).fetchone()
+        return {
+            "generate_sql": round(row[0] or 0),
+            "db_exec": round(row[1] or 0),
+            "explain": round(row[2] or 0),
+            "count": row[3] or 0,
+        }
+    finally:
+        conn.close()
+
+
+def fetch_latency_percentiles() -> dict:
+    """P50 / P90 / P99 của ms_total trên các request THÀNH CÔNG - percentile
+    phản ánh trải nghiệm thực tế tốt hơn AVG (1 request bị treo lâu không kéo
+    lệch percentile như nó kéo lệch trung bình cộng).
+
+    Tính bằng Python (nearest-rank, sort toàn bộ giá trị) thay vì SQL, vì SQLite
+    không có PERCENTILE_CONT sẵn và lượng dữ liệu ở quy mô demo nội bộ này (vài
+    nghìn dòng) sort trong Python vẫn rất nhanh, không cần optimize thêm.
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT ms_total FROM request_logs WHERE blocked = 0 AND ms_total IS NOT NULL ORDER BY ms_total"
+        ).fetchall()
+        values = [r[0] for r in rows]
+        n = len(values)
+        if not n:
+            return {"p50": 0, "p90": 0, "p99": 0, "count": 0}
+
+        def _pct(p: float) -> int:
+            # nearest-rank: phan tu thu ceil(p/100 * n), 1-indexed, kep trong [1, n]
+            import math
+            idx = min(n, max(1, math.ceil(p / 100 * n)))
+            return values[idx - 1]
+
+        return {"p50": _pct(50), "p90": _pct(90), "p99": _pct(99), "count": n}
+    finally:
+        conn.close()
+
+
+def fetch_token_stats() -> dict:
+    """Tổng token đã dùng (input/output/cache-read) - cộng trên MỌI request có
+    ghi nhận usage (kể cả request bị guardrail/validator chặn SAU khi đã gọi
+    LLM ít nhất 1 lần, vì token đó vẫn bị tính tiền thật dù câu trả lời bị
+    chặn không trả về user). Request bị chặn TRƯỚC khi gọi LLM (input_guardrail)
+    có input_tokens NULL nên không được tính vào đây - đúng bản chất, vì
+    provider chưa hề nhận request nào.
+    """
+    conn = _connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT SUM(input_tokens), SUM(output_tokens), SUM(cache_read_tokens), COUNT(*)
+            FROM request_logs
+            WHERE input_tokens IS NOT NULL
+            """
+        ).fetchone()
+        return {
+            "input_tokens": row[0] or 0,
+            "output_tokens": row[1] or 0,
+            "cache_read_tokens": row[2] or 0,
+            "requests_with_usage": row[3] or 0,
+        }
     finally:
         conn.close()
 
