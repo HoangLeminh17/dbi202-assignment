@@ -78,3 +78,25 @@ class TestCheckOutput:
             "SELECT * FROM vw_game_sales_full WHERE 1=0",
             [],
         )
+
+    def test_accepts_vietnamese_thousands_separator_matching_plain_int_in_result(self):
+        check_output(
+            "Tong cong ban duoc 1.000.000 ban.",
+            "SELECT SUM(num_sales) FROM vw_game_sales_full",
+            [(1000000,)],
+        )
+
+    def test_accepts_vietnamese_thousands_separator_with_decimal(self):
+        check_output(
+            "Doanh so dat 1.234.567,89 ban.",
+            "SELECT SUM(num_sales) FROM vw_game_sales_full",
+            [("1234567.89",)],
+        )
+
+    def test_raises_on_hallucinated_thousands_separator_number(self):
+        with pytest.raises(GuardrailError):
+            check_output(
+                "Tong cong ban duoc 9.999.999 ban.",
+                "SELECT SUM(num_sales) FROM vw_game_sales_full",
+                [(1000000,)],
+            )
